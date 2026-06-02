@@ -1,8 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import RootLayout from './RootLayout'
-import { GuestOnly } from './guards'
 import Layout from '../components/Layout'
-import AuthPage from '../pages/AuthPage'
 import MapPage from '../pages/MapPage'
 import ChatListPage from '../pages/ChatListPage'
 import ChatRoomPage from '../pages/ChatRoomPage'
@@ -16,13 +14,8 @@ export const routerConfig = createBrowserRouter([
     path: '/',
     Component: RootLayout,
     children: [
-      // /auth — only for guests; reached by explicit button press, never auto-redirect
-      {
-        Component: GuestOnly,
-        children: [{ path: 'auth', Component: AuthPage }],
-      },
-
-      // The whole app is public — pages prompt for login themselves where needed
+      // The whole app is public — login is a bottom sheet (useAuth().promptLogin()),
+      // not a route, and pages prompt for it themselves where an action needs auth.
       {
         Component: Layout,
         children: [

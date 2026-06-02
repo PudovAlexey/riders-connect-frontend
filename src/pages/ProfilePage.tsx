@@ -53,7 +53,7 @@ function SectionCard({ title, children }: { title?: string; children: React.Reac
 }
 
 export default function ProfilePage() {
-  const { user, logout, updateUser } = useAuth()
+  const { user, logout, updateUser, promptLogin } = useAuth()
   const navigate = useNavigate()
   const { vehicles } = useGarage()
   const [editing, setEditing] = useState(false)
@@ -76,7 +76,7 @@ export default function ProfilePage() {
           <p className="text-slate-500 text-sm mt-1">Sign in to manage your profile and settings</p>
         </div>
         <button
-          onClick={() => navigate('/auth')}
+          onClick={promptLogin}
           className="w-full max-w-xs bg-primary text-white rounded-xl py-3.5 font-semibold text-base active:bg-primary-dark transition-colors"
         >
           Sign in

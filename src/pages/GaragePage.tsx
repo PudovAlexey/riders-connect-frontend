@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useGarage } from '../hooks/useGarage'
 import PhotoPicker from '../components/PhotoPicker'
@@ -49,8 +49,7 @@ const EMPTY_FORM = { make: '', model: '', year: '', color: '', notes: '', photos
 
 export default function GaragePage() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { token } = useAuth()
+  const { token, promptLogin } = useAuth()
   const { vehicles, loading, addVehicle, deleteVehicle } = useGarage()
 
   const [activeIdx, setActiveIdx] = useState(0)
@@ -59,7 +58,7 @@ export default function GaragePage() {
   // Browsing the garage is public, but creating a vehicle requires login
   const openForm = () => {
     if (!token) {
-      navigate('/auth', { state: { from: location } })
+      promptLogin()
       return
     }
     setShowForm(true)

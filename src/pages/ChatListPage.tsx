@@ -6,7 +6,7 @@ import type { Chat } from '../types'
 import { chatTitle, chatSubtitle, chatAvatarUrl, initial, messagePreview } from '../lib/chat'
 
 export default function ChatListPage() {
-  const { user } = useAuth()
+  const { user, promptLogin } = useAuth()
   const navigate = useNavigate()
   const [chats, setChats] = useState<Chat[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,7 +43,7 @@ export default function ChatListPage() {
           <p className="text-slate-500 text-sm mt-1">Register to message other riders</p>
         </div>
         <button
-          onClick={() => navigate('/auth')}
+          onClick={promptLogin}
           className="w-full max-w-xs bg-primary text-white rounded-xl py-3.5 font-semibold text-base active:bg-primary-dark transition-colors"
         >
           Register / Sign in

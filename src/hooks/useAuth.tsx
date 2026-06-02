@@ -9,6 +9,12 @@ interface AuthCtx {
   login: (token: string, user: User) => void
   logout: () => void
   updateUser: (user: User) => void
+  /** Whether the login bottom sheet is currently open */
+  authOpen: boolean
+  /** Open the login bottom sheet (used wherever an action requires auth) */
+  promptLogin: () => void
+  /** Close the login bottom sheet */
+  closeAuth: () => void
 }
 
 const Ctx = createContext<AuthCtx>(null!)
@@ -17,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'))
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [authOpen, setAuthOpen] = useState(false)
 
   useEffect(() => {
     if (!token) { setIsLoading(false); return }
@@ -30,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('token', tok)
     setToken(tok)
     setUser(u)
+    setAuthOpen(false)
   }
 
   const logout = () => {
@@ -38,7 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  return <Ctx.Provider value={{ user, token, isLoading, login, logout, updateUser: setUser }}>{children}</Ctx.Provider>
+  const promptLogin = () => setAuthOpen(true)
+  const closeAuth = () => setAuthOpen(false)
+
+  return (
+    <Ctx.Provider
+      value={{ user, token, isLoading, login, logout, updateUser: setUser, authOpen, promptLogin, closeAuth }}
+    >
+      {children}
+    </Ctx.Provider>
+  )
 }
 
 export const useAuth = () => useContext(Ctx)
