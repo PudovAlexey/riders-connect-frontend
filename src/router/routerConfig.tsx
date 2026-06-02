@@ -16,27 +16,30 @@ export const routerConfig = createBrowserRouter([
     path: '/',
     Component: RootLayout,
     children: [
-      // Public routes — only for guests, authed users get bounced to the app
+      // /auth — only for guests; authed users get bounced back where they came from
       {
         Component: GuestOnly,
         children: [{ path: 'auth', Component: AuthPage }],
       },
 
-      // Protected routes — require a token, rendered inside the Layout (bottom nav)
+      // The app is public — no login required to browse
       {
-        Component: RequireAuth,
+        Component: Layout,
         children: [
+          { index: true, element: <Navigate to="/map" replace /> },
+          { path: 'map', Component: MapPage },
+          { path: 'profile', Component: ProfilePage },
+          // Garage is viewable without auth; creating a vehicle prompts login inside the page
+          { path: 'garage', Component: GaragePage },
+
+          // Chat requires auth — entering any chat route redirects guests to /auth
           {
-            Component: Layout,
+            Component: RequireAuth,
             children: [
-              { index: true, element: <Navigate to="/map" replace /> },
-              { path: 'map', Component: MapPage },
               { path: 'chat', Component: ChatListPage },
               { path: 'chat/new', Component: NewChatPage },
               { path: 'chat/:chatId', Component: ChatRoomPage },
               { path: 'contacts', Component: ContactsPage },
-              { path: 'profile', Component: ProfilePage },
-              { path: 'garage', Component: GaragePage },
             ],
           },
         ],

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import { useGarage } from '../hooks/useGarage'
 import PhotoPicker from '../components/PhotoPicker'
 import type { Vehicle } from '../types'
@@ -48,10 +49,21 @@ const EMPTY_FORM = { make: '', model: '', year: '', color: '', notes: '', photos
 
 export default function GaragePage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { token } = useAuth()
   const { vehicles, loading, addVehicle, deleteVehicle } = useGarage()
 
   const [activeIdx, setActiveIdx] = useState(0)
   const [showForm, setShowForm] = useState(false)
+
+  // Browsing the garage is public, but creating a vehicle requires login
+  const openForm = () => {
+    if (!token) {
+      navigate('/auth', { state: { from: location } })
+      return
+    }
+    setShowForm(true)
+  }
   const [form, setForm] = useState(EMPTY_FORM)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
@@ -120,7 +132,7 @@ export default function GaragePage() {
           <h1 className="text-xl font-bold text-slate-900">My Garage</h1>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={openForm}
           className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white active:opacity-80 transition-opacity"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
@@ -145,7 +157,7 @@ export default function GaragePage() {
               <p className="text-sm text-slate-500 mt-1">Add your first motorcycle</p>
             </div>
             <button
-              onClick={() => setShowForm(true)}
+              onClick={openForm}
               className="bg-primary text-white rounded-xl px-6 py-3.5 font-semibold text-sm active:opacity-80 transition-opacity flex items-center gap-2"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4">
