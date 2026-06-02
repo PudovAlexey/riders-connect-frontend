@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { sendCode, verify } from '../api'
 import { useAuth } from '../hooks/useAuth'
 
@@ -6,6 +7,7 @@ type Step = 'email' | 'code'
 
 export default function AuthPage() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
@@ -40,8 +42,28 @@ export default function AuthPage() {
     }
   }
 
+  // Go back to the previous in-app page, or fall back to the map on a direct load
+  const goBack = () => {
+    const idx = (window.history.state?.idx as number | undefined) ?? 0
+    if (idx > 0) navigate(-1)
+    else navigate('/map')
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
+      {/* Back button */}
+      <div className="px-4 pt-12">
+        <button
+          onClick={goBack}
+          className="w-9 h-9 flex items-center justify-center rounded-full text-slate-600 active:bg-slate-100 transition-colors"
+          aria-label="Back"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+      </div>
+
       {/* Header */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
         <div className="mb-10 text-center">

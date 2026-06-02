@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import RootLayout from './RootLayout'
-import { RequireAuth, GuestOnly } from './guards'
+import { GuestOnly } from './guards'
 import Layout from '../components/Layout'
 import AuthPage from '../pages/AuthPage'
 import MapPage from '../pages/MapPage'
@@ -16,32 +16,24 @@ export const routerConfig = createBrowserRouter([
     path: '/',
     Component: RootLayout,
     children: [
-      // /auth — only for guests; authed users get bounced back where they came from
+      // /auth — only for guests; reached by explicit button press, never auto-redirect
       {
         Component: GuestOnly,
         children: [{ path: 'auth', Component: AuthPage }],
       },
 
-      // The app is public — no login required to browse
+      // The whole app is public — pages prompt for login themselves where needed
       {
         Component: Layout,
         children: [
           { index: true, element: <Navigate to="/map" replace /> },
           { path: 'map', Component: MapPage },
           { path: 'profile', Component: ProfilePage },
-          // Garage is viewable without auth; creating a vehicle prompts login inside the page
           { path: 'garage', Component: GaragePage },
-
-          // Chat requires auth — entering any chat route redirects guests to /auth
-          {
-            Component: RequireAuth,
-            children: [
-              { path: 'chat', Component: ChatListPage },
-              { path: 'chat/new', Component: NewChatPage },
-              { path: 'chat/:chatId', Component: ChatRoomPage },
-              { path: 'contacts', Component: ContactsPage },
-            ],
-          },
+          { path: 'chat', Component: ChatListPage },
+          { path: 'chat/new', Component: NewChatPage },
+          { path: 'chat/:chatId', Component: ChatRoomPage },
+          { path: 'contacts', Component: ContactsPage },
         ],
       },
 
