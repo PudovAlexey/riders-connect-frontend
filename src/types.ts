@@ -78,3 +78,46 @@ export interface Vehicle {
   photos: string[]
   created_at: string
 }
+
+export type EventType = 'meeting' | 'trip' | 'photosession'
+export type EventVisibility = 'public' | 'private'
+export type ParticipantStatus = 'pending' | 'accepted' | 'declined'
+export type ParticipantRole = 'owner' | 'participant'
+
+export interface Destination {
+  lat: number
+  lon: number
+  address: string
+}
+
+export interface EventDetails {
+  destination?: Destination
+}
+
+// Named RideEvent to avoid clashing with the DOM `Event` global.
+export interface RideEvent {
+  id: string
+  owner_id: string
+  type: EventType
+  title: string
+  description: string
+  starts_at: string
+  visibility: EventVisibility
+  details: EventDetails
+  created_at: string
+  updated_at: string
+}
+
+export interface EventParticipant {
+  user_id: string
+  name: string
+  username: string
+  avatar_url: string
+  role: ParticipantRole
+  status: ParticipantStatus
+}
+
+export interface EventItem extends RideEvent {
+  participants: EventParticipant[]
+  my_status?: ParticipantStatus
+}

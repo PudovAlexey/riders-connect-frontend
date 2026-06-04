@@ -78,3 +78,39 @@ export const addGarageVehicle = (data: Omit<import('./types').Vehicle, 'id' | 'c
 
 export const deleteGarageVehicle = (id: string) =>
   api.delete(`/garage/${id}`)
+
+type EventScope = 'feed' | 'mine' | 'invitations'
+
+export interface CreateEventInput {
+  type: import('./types').EventType
+  title: string
+  description?: string
+  starts_at: string
+  visibility: import('./types').EventVisibility
+  details?: import('./types').EventDetails
+  invitee_ids?: string[]
+}
+
+export const getEvents = (scope: EventScope = 'feed') =>
+  api.get<import('./types').RideEvent[]>(`/events?scope=${scope}`)
+
+export const getEvent = (id: string) =>
+  api.get<import('./types').EventItem>(`/events/${id}`)
+
+export const createEvent = (data: CreateEventInput) =>
+  api.post<import('./types').RideEvent>('/events', data)
+
+export const updateEvent = (id: string, data: Partial<CreateEventInput>) =>
+  api.patch<import('./types').RideEvent>(`/events/${id}`, data)
+
+export const deleteEvent = (id: string) =>
+  api.delete(`/events/${id}`)
+
+export const inviteToEvent = (id: string, target: { username?: string; user_id?: string }) =>
+  api.post(`/events/${id}/invite`, target)
+
+export const respondToEvent = (id: string, status: 'accepted' | 'declined') =>
+  api.post(`/events/${id}/respond`, { status })
+
+export const removeEventParticipant = (id: string, userId: string) =>
+  api.delete(`/events/${id}/participants/${userId}`)

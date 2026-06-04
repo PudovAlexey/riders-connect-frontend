@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getContacts, searchUsers, createDirectChat, createGroupChat } from '../api'
 import type { Contact, User } from '../types'
 import { initial } from '../lib/chat'
+import AppHeader from '../components/AppHeader'
 
 type Mode = 'direct' | 'group'
 
@@ -84,15 +85,7 @@ export default function NewChatPage() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-12 pb-3 border-b border-slate-100">
-        <button onClick={() => navigate('/chat')} className="w-8 h-8 flex items-center justify-center text-slate-500 -ml-1">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-            <path d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-bold text-slate-900">New {mode === 'group' ? 'group' : 'chat'}</h1>
-      </div>
+      <AppHeader border onBack={() => navigate('/chat')} title={`New ${mode === 'group' ? 'group' : 'chat'}`} />
 
       {/* Mode tabs */}
       <div className="flex px-4 pt-3 gap-2">

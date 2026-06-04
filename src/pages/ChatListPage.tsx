@@ -4,6 +4,7 @@ import { getChats } from '../api'
 import { useAuth } from '../hooks/useAuth'
 import type { Chat } from '../types'
 import { chatTitle, chatSubtitle, chatAvatarUrl, initial, messagePreview } from '../lib/chat'
+import AppHeader from '../components/AppHeader'
 
 export default function ChatListPage() {
   const { user, promptLogin } = useAuth()
@@ -54,33 +55,32 @@ export default function ChatListPage() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-12 pb-3 border-b border-slate-100">
-        <h1 className="text-xl font-bold text-slate-900">Messages</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/contacts')}
-            title="Contacts"
-            className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-600"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-              <path d="M17 20h5v-1a4 4 0 00-4-4h-1m-6 5H2v-1a4 4 0 014-4h4a4 4 0 014 4v1zm-3-9a3 3 0 100-6 3 3 0 000 6zm9-3a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => navigate('/chat/new')}
-            title="New chat"
-            className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="px-4 py-2 border-b border-slate-100">
+      <AppHeader
+        title="Messages"
+        border
+        actions={
+          <>
+            <button
+              onClick={() => navigate('/contacts')}
+              title="Contacts"
+              className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-600"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+                <path d="M17 20h5v-1a4 4 0 00-4-4h-1m-6 5H2v-1a4 4 0 014-4h4a4 4 0 014 4v1zm-3-9a3 3 0 100-6 3 3 0 000 6zm9-3a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => navigate('/chat/new')}
+              title="New chat"
+              className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </>
+        }
+      >
         <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-400">
             <path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
@@ -92,7 +92,7 @@ export default function ChatListPage() {
             className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
           />
         </div>
-      </div>
+      </AppHeader>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto">

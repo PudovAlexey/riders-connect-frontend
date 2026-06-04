@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useGarage } from '../hooks/useGarage'
 import PhotoPicker from '../components/PhotoPicker'
 import type { Vehicle } from '../types'
+import AppHeader from '../components/AppHeader'
 
 function MotoIcon({ size = 64, className = '' }: { size?: number; className?: string }) {
   return (
@@ -117,28 +118,20 @@ export default function GaragePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-100">
-      {/* Top bar */}
-      <div className="bg-white px-4 pt-12 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <AppHeader
+        onBack={() => navigate(-1)}
+        title="My Garage"
+        actions={
           <button
-            onClick={() => navigate(-1)}
-            className="w-9 h-9 flex items-center justify-center rounded-full active:bg-slate-100 transition-colors"
+            onClick={openForm}
+            className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white active:opacity-80 transition-opacity"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5 text-slate-600">
-              <path d="M15 18l-6-6 6-6" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
+              <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
-          <h1 className="text-xl font-bold text-slate-900">My Garage</h1>
-        </div>
-        <button
-          onClick={openForm}
-          className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white active:opacity-80 transition-opacity"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
-      </div>
+        }
+      />
 
       <div className="flex-1 flex flex-col pb-24">
         {loading ? (

@@ -7,7 +7,10 @@ import ChatRoomPage from '../pages/ChatRoomPage'
 import NewChatPage from '../pages/NewChatPage'
 import ContactsPage from '../pages/ContactsPage'
 import ProfilePage from '../pages/ProfilePage'
+import ProfileEditPage from '../pages/ProfileEditPage'
 import GaragePage from '../pages/GaragePage'
+import EventsPage from '../pages/EventsPage'
+import EventDetailPage from '../pages/EventDetailPage'
 
 export const routerConfig = createBrowserRouter([
   {
@@ -22,7 +25,10 @@ export const routerConfig = createBrowserRouter([
           { index: true, element: <Navigate to="/map" replace /> },
           { path: 'map', Component: MapPage },
           { path: 'profile', Component: ProfilePage },
+          { path: 'profile/edit', Component: ProfileEditPage },
           { path: 'garage', Component: GaragePage },
+          { path: 'events', Component: EventsPage },
+          { path: 'events/:eventId', Component: EventDetailPage },
           { path: 'chat', Component: ChatListPage },
           { path: 'chat/new', Component: NewChatPage },
           { path: 'chat/:chatId', Component: ChatRoomPage },

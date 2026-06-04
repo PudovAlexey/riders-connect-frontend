@@ -26,6 +26,7 @@ export default defineConfig({
       '/chat': apiProxy,
       '/contacts': apiProxy,
       '/garage': apiProxy,
+      '/events': apiProxy,
       '/media': apiProxy,
       '/uploads': apiProxy,
       '/ws': { target: 'ws://localhost:8080', ws: true },

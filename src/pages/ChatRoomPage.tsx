@@ -8,6 +8,7 @@ import { chatTitle, chatSubtitle, chatAvatarUrl, initial, senderName } from '../
 import { useRecorder } from '../hooks/useRecorder'
 import MessageContent from '../components/MessageContent'
 import VideoNoteRecorder from '../components/VideoNoteRecorder'
+import AppHeader from '../components/AppHeader'
 
 type WsMsg = { type: string; message?: Message }
 
@@ -130,36 +131,31 @@ export default function ChatRoomPage() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-12 pb-3 border-b border-slate-100 bg-white">
-        <button
-          onClick={() => navigate('/chat')}
-          className="w-8 h-8 flex items-center justify-center text-slate-500 -ml-1"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-            <path d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <button
-          onClick={() => chat && setShowMembers(true)}
-          disabled={!chat}
-          className="flex items-center gap-3 min-w-0 flex-1 text-left active:opacity-70 transition-opacity"
-        >
-          <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-            {avatar ? (
-              <img src={avatar} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-indigo-500 font-semibold text-sm">{initial(title)}</span>
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="font-semibold text-slate-900 truncate leading-tight">{title}</p>
-            <p className="text-xs text-slate-400 truncate">
-              {chat ? `${chat.members.length} ${chat.members.length === 1 ? 'member' : 'members'}` : subtitle}
-            </p>
-          </div>
-        </button>
-      </div>
+      <AppHeader
+        border
+        onBack={() => navigate('/chat')}
+        title={
+          <button
+            onClick={() => chat && setShowMembers(true)}
+            disabled={!chat}
+            className="flex items-center gap-3 min-w-0 w-full text-left active:opacity-70 transition-opacity"
+          >
+            <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {avatar ? (
+                <img src={avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-indigo-500 font-semibold text-sm">{initial(title)}</span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-900 truncate leading-tight">{title}</p>
+              <p className="text-xs text-slate-400 truncate">
+                {chat ? `${chat.members.length} ${chat.members.length === 1 ? 'member' : 'members'}` : subtitle}
+              </p>
+            </div>
+          </button>
+        }
+      />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">

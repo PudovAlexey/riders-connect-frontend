@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useGarage } from '../hooks/useGarage'
-import { updateMe } from '../api'
+import AppHeader from '../components/AppHeader'
 
 function ChevronIcon() {
   return (
@@ -53,16 +53,9 @@ function SectionCard({ title, children }: { title?: string; children: React.Reac
 }
 
 export default function ProfilePage() {
-  const { user, logout, updateUser, promptLogin } = useAuth()
+  const { user, logout, promptLogin } = useAuth()
   const navigate = useNavigate()
   const { vehicles } = useGarage()
-  const [editing, setEditing] = useState(false)
-  const [displayName, setDisplayName] = useState(user?.name ?? '')
-  const [nameInput, setNameInput] = useState(user?.name ?? '')
-  const [username, setUsername] = useState(user?.username ?? '')
-  const [usernameInput, setUsernameInput] = useState(user?.username ?? '')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
 
   if (!user) {
@@ -85,43 +78,7 @@ export default function ProfilePage() {
     )
   }
 
-  const initial = (displayName || user.email || '?')[0].toUpperCase()
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!nameInput.trim()) return
-    const cleanUsername = usernameInput.trim().replace(/^@/, '').toLowerCase()
-    if (cleanUsername && !/^[a-z0-9_]{3,32}$/.test(cleanUsername)) {
-      setError('Login must be 3–32 chars: a–z, 0–9, _')
-      return
-    }
-    setSaving(true)
-    setError('')
-    try {
-      const res = await updateMe({
-        name: nameInput.trim(),
-        avatar_url: user.avatar_url ?? '',
-        ...(cleanUsername && cleanUsername !== username ? { username: cleanUsername } : {}),
-      })
-      updateUser(res.data)
-      setDisplayName(res.data.name)
-      setUsername(res.data.username)
-      setEditing(false)
-    } catch (err: any) {
-      if (err?.response?.status === 409) setError('That login is already taken')
-      else if (err?.response?.status === 400) setError('Invalid login')
-      else setError('Could not save')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleCancel = () => {
-    setNameInput(displayName)
-    setUsernameInput(username)
-    setError('')
-    setEditing(false)
-  }
+  const initial = (user.name || user.email || '?')[0].toUpperCase()
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(user.id)
@@ -131,87 +88,41 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-100">
-      {/* Top bar */}
-      <div className="bg-white px-4 pt-12 pb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Profile</h1>
-        {!editing && (
+      <AppHeader
+        title="Profile"
+        actions={
           <button
-            onClick={() => { setNameInput(displayName); setUsernameInput(username); setError(''); setEditing(true) }}
+            onClick={() => navigate('/profile/edit')}
             className="w-9 h-9 flex items-center justify-center rounded-full active:bg-slate-100 transition-colors"
+            aria-label="Edit profile"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5 text-slate-600">
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
           </button>
-        )}
-      </div>
+        }
+      />
 
       <div className="flex-1 px-4 py-4 space-y-3 pb-24">
         {/* User info card */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          {editing ? (
-            <form onSubmit={handleSave} className="px-4 py-4 space-y-3">
-              <p className="text-sm font-semibold text-slate-900 mb-1">Edit profile</p>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Display name</label>
-                <input
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="Your name"
-                  autoFocus
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Login</label>
-                <div className="flex items-center border border-slate-200 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-primary">
-                  <span className="text-slate-400 text-sm">@</span>
-                  <input
-                    type="text"
-                    value={usernameInput}
-                    onChange={(e) => setUsernameInput(e.target.value)}
-                    placeholder="login"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    className="flex-1 ml-1 text-slate-900 focus:outline-none text-sm bg-transparent"
-                  />
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1">Others can add you to chats by this login</p>
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="submit"
-                  disabled={saving || !nameInput.trim()}
-                  className="flex-1 bg-primary text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-50 transition-opacity"
-                >
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 font-semibold text-sm active:bg-slate-200 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="flex items-center gap-4 px-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-xl font-bold text-slate-900 truncate">
-                  {displayName || 'No name'}
-                </p>
-                {username && <p className="text-sm text-primary mt-0.5 truncate">@{username}</p>}
-                <p className="text-sm text-slate-500 mt-0.5 truncate">{user.email}</p>
-              </div>
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-md shadow-orange-100">
-                {initial}
-              </div>
+          <div className="flex items-center gap-4 px-4 py-5">
+            <div className="flex-1 min-w-0">
+              <p className="text-2xl font-bold text-slate-900 truncate">
+                {user.name || 'No name'}
+              </p>
+              {user.username && <p className="text-sm text-primary mt-1 truncate">@{user.username}</p>}
+              <p className="text-sm text-slate-500 mt-1 truncate">{user.email}</p>
             </div>
-          )}
+            <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center flex-shrink-0 shadow-md shadow-orange-100">
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white text-3xl font-bold">{initial}</span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Account section */}
@@ -237,11 +148,12 @@ export default function ProfilePage() {
           <MenuRow
             icon={
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
             }
             label="Edit profile"
-            onClick={() => { setNameInput(displayName); setUsernameInput(username); setError(''); setEditing(true) }}
+            onClick={() => navigate('/profile/edit')}
           />
           <MenuRow
             icon={
