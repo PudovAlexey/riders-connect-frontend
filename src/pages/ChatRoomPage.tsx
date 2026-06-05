@@ -5,6 +5,7 @@ import { getMessages, getChats, uploadMedia } from '../api'
 import { useAuth } from '../hooks/useAuth'
 import type { Message, Chat } from '../types'
 import { chatTitle, chatSubtitle, chatAvatarUrl, initial, senderName } from '../lib/chat'
+import { buildWsUrl } from '../lib/config'
 import { useRecorder } from '../hooks/useRecorder'
 import MessageContent from '../components/MessageContent'
 import VideoNoteRecorder from '../components/VideoNoteRecorder'
@@ -28,8 +29,7 @@ export default function ChatRoomPage() {
 
   const audioRec = useRecorder('audio')
 
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const wsUrl = token ? `${proto}://${location.host}/ws?token=${token}` : null
+  const wsUrl = token ? buildWsUrl(`/ws?token=${token}`) : null
 
   const { sendJsonMessage, lastJsonMessage } = useWebSocket<WsMsg>(wsUrl, {
     shouldReconnect: () => true,

@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import useWebSocket from 'react-use-websocket'
-import { getUsersOnMap, createDirectChat } from '../api'
+import { getUsersOnMap, getPoints, createDirectChat } from '../api'
 import { useAuth } from '../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
-import type { UserLocation } from '../types'
+import type { UserLocation, Point } from '../types'
+import BottomSheet from '../components/BottomSheet'
+import { buildWsUrl } from '../lib/config'
+import { POINT_CATEGORIES, categoryMeta, categorySvg, createCategoryIcon } from '../lib/pointCategories'
 
 // Fix Leaflet default icon in Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -41,6 +44,43 @@ function FlyTo({ pos }: { pos: [number, number] }) {
   return null
 }
 
+// `categories` semantics: null = all categories (omit filter), 'none' = nothing
+// selected (show no points), string[] = the selected subset.
+type CategoryParam = string[] | null | 'none'
+
+// Loads points for the current map viewport, refetching (debounced) on pan/zoom
+// and immediately whenever the selected categories change.
+function ViewportPoints({ param, setPoints }: { param: CategoryParam; setPoints: (p: Point[]) => void }) {
+  const map = useMap()
+  const paramRef = useRef<CategoryParam>(param)
+  paramRef.current = param
+  const timerRef = useRef<number | undefined>(undefined)
+
+  const load = useCallback(() => {
+    const p = paramRef.current
+    if (p === 'none') { setPoints([]); return }
+    const b = map.getBounds()
+    getPoints(
+      { min_lat: b.getSouth(), max_lat: b.getNorth(), min_lon: b.getWest(), max_lon: b.getEast() },
+      p ?? undefined,
+    )
+      .then((r) => setPoints(r.data))
+      .catch(() => { /* ignore (e.g. unauthorized) */ })
+  }, [map, setPoints])
+
+  const schedule = useCallback(() => {
+    window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(load, 400)
+  }, [load])
+
+  useMapEvents({ moveend: schedule, zoomend: schedule })
+
+  // Initial load + refetch on category-selection change
+  useEffect(() => { load() }, [load, param])
+
+  return null
+}
+
 export default function MapPage() {
   const { user, token } = useAuth()
   const navigate = useNavigate()
@@ -51,9 +91,30 @@ export default function MapPage() {
   const [onlineCount, setOnlineCount] = useState(0)
   const flyToRef = useRef(false)
 
-  const wsUrl = token
-    ? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?token=${token}`
-    : null
+  // Points of interest
+  const allKeys = useMemo(() => POINT_CATEGORIES.map((c) => c.key), [])
+  const [points, setPoints] = useState<Point[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => new Set(allKeys))
+  const [showRiders, setShowRiders] = useState(true)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [activePoint, setActivePoint] = useState<Point | null>(null)
+
+  const categoryParam = useMemo<CategoryParam>(() => {
+    if (selectedCategories.size === 0) return 'none'
+    if (selectedCategories.size === allKeys.length) return null
+    return Array.from(selectedCategories)
+  }, [selectedCategories, allKeys])
+
+  const toggleCategory = (key: string) =>
+    setSelectedCategories((prev) => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  const selectAll = () => setSelectedCategories(new Set(allKeys))
+  const clearAll = () => setSelectedCategories(new Set())
+
+  const wsUrl = token ? buildWsUrl(`/ws?token=${token}`) : null
 
   const { sendJsonMessage, lastJsonMessage } = useWebSocket(wsUrl, {
     share: true,
@@ -130,6 +191,18 @@ export default function MapPage() {
 
         {myPos && !flyToRef.current && <FlyTo pos={myPos} />}
 
+        <ViewportPoints param={categoryParam} setPoints={setPoints} />
+
+        {/* Points of interest */}
+        {points.map((p) => (
+          <Marker
+            key={p.id}
+            position={[p.lat, p.lon]}
+            icon={createCategoryIcon(p.category)}
+            eventHandlers={{ click: () => setActivePoint(p) }}
+          />
+        ))}
+
         {/* My location */}
         {myPos && (
           <Marker position={myPos} icon={myIcon}>
@@ -139,8 +212,8 @@ export default function MapPage() {
           </Marker>
         )}
 
-        {/* Other users */}
-        {locations
+        {/* Other riders */}
+        {showRiders && locations
           .filter((l) => l.user_id !== user?.id)
           .map((l) => (
             <Marker
@@ -185,6 +258,17 @@ export default function MapPage() {
           ))}
       </MapContainer>
 
+      {/* Filter button */}
+      <button
+        onClick={() => setFilterOpen(true)}
+        className="absolute top-4 left-4 z-[1000] w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-primary active:bg-slate-50 transition-colors"
+        title="Filter"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
+          <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
+        </svg>
+      </button>
+
       {/* Locate me button */}
       <button
         onClick={locateMe}
@@ -200,6 +284,110 @@ export default function MapPage() {
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur px-3 py-1 rounded-full shadow text-xs text-slate-600">
         {onlineCount} rider{onlineCount !== 1 ? 's' : ''} online
       </div>
+
+      {/* Filter sheet */}
+      <BottomSheet open={filterOpen} onClose={() => setFilterOpen(false)}>
+        <div className="px-4 pb-8 pt-1 max-h-[75vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-lg font-bold text-slate-900">Map filters</p>
+            <div className="flex gap-2">
+              <button onClick={selectAll} className="text-xs font-medium text-primary">Select all</button>
+              <button onClick={clearAll} className="text-xs font-medium text-slate-400">Clear</button>
+            </div>
+          </div>
+
+          {/* Riders layer toggle */}
+          <button
+            onClick={() => setShowRiders((v) => !v)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl mb-4 text-sm font-medium transition-colors ${
+              showRiders ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            <span>Motorcyclists</span>
+            <span className={`text-xs ${showRiders ? 'text-white/80' : 'text-slate-400'}`}>
+              {showRiders ? 'shown' : 'hidden'}
+            </span>
+          </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            {POINT_CATEGORIES.map((c) => {
+              const sel = selectedCategories.has(c.key)
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => toggleCategory(c.key)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-colors ${
+                    sel ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  <span className="w-5 h-5 shrink-0" dangerouslySetInnerHTML={{ __html: categorySvg(c.key, 20) }} />
+                  <span className="leading-tight">{c.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </BottomSheet>
+
+      {/* Point detail sheet */}
+      <BottomSheet open={!!activePoint} onClose={() => setActivePoint(null)}>
+        {activePoint && (
+          <div className="px-4 pb-8 pt-1 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center gap-3 mb-3">
+              <span
+                className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0"
+                style={{ background: categoryMeta(activePoint.category).color }}
+                dangerouslySetInnerHTML={{ __html: categorySvg(activePoint.category, 22) }}
+              />
+              <div className="min-w-0">
+                <p className="text-lg font-bold text-slate-900 leading-tight truncate">{activePoint.name}</p>
+                <p className="text-xs text-slate-500">{categoryMeta(activePoint.category).label}</p>
+              </div>
+            </div>
+
+            {activePoint.description && (
+              <p className="text-sm text-slate-600 mb-3 leading-relaxed">{activePoint.description}</p>
+            )}
+
+            <div className="space-y-2 text-sm">
+              {activePoint.address && (
+                <div className="flex gap-2">
+                  <span className="text-slate-400 w-16 shrink-0">Address</span>
+                  <span className="text-slate-700">{activePoint.address}</span>
+                </div>
+              )}
+              {activePoint.phone && (
+                <div className="flex gap-2">
+                  <span className="text-slate-400 w-16 shrink-0">Phone</span>
+                  <a href={`tel:${activePoint.phone}`} className="text-primary">{activePoint.phone}</a>
+                </div>
+              )}
+              {activePoint.website && (
+                <div className="flex gap-2">
+                  <span className="text-slate-400 w-16 shrink-0">Website</span>
+                  <a href={activePoint.website} target="_blank" rel="noreferrer" className="text-primary truncate">
+                    {activePoint.website}
+                  </a>
+                </div>
+              )}
+              {activePoint.hours && (
+                <div className="flex gap-2">
+                  <span className="text-slate-400 w-16 shrink-0">Hours</span>
+                  <span className="text-slate-700">{activePoint.hours}</span>
+                </div>
+              )}
+            </div>
+
+            {activePoint.photos?.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mt-4">
+                {activePoint.photos.map((url, i) => (
+                  <img key={i} src={url} alt="" className="w-full h-20 object-cover rounded-lg" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </BottomSheet>
     </div>
   )
 }

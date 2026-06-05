@@ -1,6 +1,7 @@
 import axios from 'axios'
+import { API_URL } from './lib/config'
 
-const api = axios.create({ baseURL: '' })
+const api = axios.create({ baseURL: API_URL })
 
 api.interceptors.request.use((cfg) => {
   const token = localStorage.getItem('token')
@@ -34,6 +35,15 @@ export const updateLocation = (lat: number, lon: number) =>
 
 export const getUsersOnMap = () =>
   api.get<import('./types').UserLocation[]>('/geo/users')
+
+export const getPoints = (
+  b: { min_lat: number; max_lat: number; min_lon: number; max_lon: number },
+  categories?: string[],
+) => {
+  let url = `/points?min_lat=${b.min_lat}&max_lat=${b.max_lat}&min_lon=${b.min_lon}&max_lon=${b.max_lon}`
+  if (categories?.length) url += `&categories=${encodeURIComponent(categories.join(','))}`
+  return api.get<import('./types').Point[]>(url)
+}
 
 export const getChats = () =>
   api.get<import('./types').Chat[]>('/chat/chats')

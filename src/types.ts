@@ -17,6 +17,23 @@ export interface UserLocation {
   avatar_url?: string
 }
 
+export interface Point {
+  id: string
+  created_by: string
+  category: string
+  name: string
+  description: string
+  lat: number
+  lon: number
+  address: string
+  phone: string
+  website: string
+  hours: string
+  photos: string[]
+  created_at: string
+  updated_at: string
+}
+
 export type ChatType = 'direct' | 'group'
 
 export interface ChatMember {

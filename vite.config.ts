@@ -23,6 +23,7 @@ export default defineConfig({
       '/auth': apiProxy,
       '/profile': apiProxy,
       '/geo': apiProxy,
+      '/points': apiProxy,
       '/chat': apiProxy,
       '/contacts': apiProxy,
       '/garage': apiProxy,
