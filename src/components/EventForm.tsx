@@ -3,6 +3,7 @@ import type { CreateEventInput } from '../api'
 import type { EventType, EventVisibility, RideEvent } from '../types'
 import { EVENT_TYPES, fromDateTimeLocal, toDateTimeLocal } from '../lib/events'
 import LocationPicker from './LocationPicker'
+import PhotoPicker from './PhotoPicker'
 import BottomSheet from './BottomSheet'
 
 interface EventFormProps {
@@ -24,6 +25,7 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
     initialDest ? { lat: initialDest.lat, lon: initialDest.lon } : null,
   )
   const [address, setAddress] = useState(initialDest?.address ?? '')
+  const [photos, setPhotos] = useState<string[]>(initial?.photos ?? [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -39,6 +41,7 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
     const d = initial?.details?.destination
     setDest(d ? { lat: d.lat, lon: d.lon } : null)
     setAddress(d?.address ?? '')
+    setPhotos(initial?.photos ?? [])
     setError('')
     setSaving(false)
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -61,6 +64,7 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
           type === 'trip' && dest
             ? { destination: { lat: dest.lat, lon: dest.lon, address: address.trim() } }
             : {},
+        photos,
       })
     } catch {
       setError('Could not save event')
@@ -116,6 +120,9 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           />
         </div>
+
+        {/* Photos */}
+        <PhotoPicker photos={photos} onChange={setPhotos} />
 
         {/* Date & time */}
         <div>

@@ -111,3 +111,34 @@ input, textarea, select, [contenteditable] {
 }
 .react-modal-sheet-backdrop { background: rgb(0 0 0 / 0.45) !important; }
 .react-modal-sheet-drag-indicator { background: rgb(var(--c-slate-300)) !important; }
+
+/* Live-location map marker (used by MapPage `myIcon`). */
+.rc-loc { position: relative; width: 24px; height: 24px; }
+.rc-loc-core,
+.rc-loc-pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.rc-loc-core {
+  background: #f97316;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+}
+.rc-loc-pulse {
+  background: #f97316;
+  opacity: 0.35;
+  animation: rc-loc-pulse 1.8s ease-out infinite;
+}
+@keyframes rc-loc-pulse {
+  0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.35; }
+  70%  { opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(3.4); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rc-loc-pulse { animation: none; opacity: 0; }
+}

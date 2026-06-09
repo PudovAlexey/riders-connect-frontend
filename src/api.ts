@@ -137,6 +137,7 @@ export interface CreateEventInput {
   starts_at: string
   visibility: import('./types').EventVisibility
   details?: import('./types').EventDetails
+  photos?: string[]
   invitee_ids?: string[]
 }
 

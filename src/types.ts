@@ -122,6 +122,7 @@ export interface RideEvent {
   starts_at: string
   visibility: EventVisibility
   details: EventDetails
+  photos: string[]
   created_at: string
   updated_at: string
 }

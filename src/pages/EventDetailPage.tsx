@@ -14,6 +14,7 @@ import {
 } from '../api'
 import EventForm from '../components/EventForm'
 import LocationPicker from '../components/LocationPicker'
+import PhotoGallery from '../components/PhotoGallery'
 import { formatEventDate, typeLabel } from '../lib/events'
 import { initial } from '../lib/chat'
 import type { EventItem, ParticipantStatus, User } from '../types'
@@ -142,6 +143,14 @@ export default function EventDetailPage() {
             <p className="text-sm text-slate-600 mt-3 whitespace-pre-wrap leading-relaxed">{event.description}</p>
           )}
         </div>
+
+        {/* Photos */}
+        {event.photos?.length > 0 && (
+          <div className="bg-surface rounded-2xl shadow-sm p-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Photos</p>
+            <PhotoGallery photos={event.photos} />
+          </div>
+        )}
 
         {/* Trip destination */}
         {event.type === 'trip' && dest && (

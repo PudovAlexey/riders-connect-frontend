@@ -20,23 +20,26 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
+// Live-location marker: solid core + white ring + a soft pulsing halo
+// (the .rc-loc* classes + keyframes live in index.css).
 const myIcon = L.divIcon({
   className: '',
-  html: '<div style="width:18px;height:18px;background:#f97316;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
+  html: '<div class="rc-loc"><span class="rc-loc-pulse"></span><span class="rc-loc-core"></span></div>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
 })
 
 function createAvatarIcon(name: string, avatarUrl: string, isOnline: boolean) {
   const initial = name ? name.charAt(0).toUpperCase() : '?'
+  // Colored status ring (green online / slate offline) → white separator → avatar.
+  const ring = isOnline ? '#22c55e' : '#94a3b8'
   const inner = avatarUrl
-    ? `<img src="${avatarUrl}" style="width:38px;height:38px;border-radius:50%;border:2.5px solid white;object-fit:cover;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:block">`
-    : `<div style="width:38px;height:38px;background:#6366f1;border-radius:50%;border:2.5px solid white;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:15px;box-shadow:0 2px 6px rgba(0,0,0,0.35)">${initial}</div>`
-  const badge = isOnline
-    ? `<span style="position:absolute;bottom:0;right:0;width:11px;height:11px;background:#22c55e;border-radius:50%;border:2px solid white"></span>`
-    : ''
-  const html = `<div style="position:relative;width:38px;height:38px">${inner}${badge}</div>`
-  return L.divIcon({ className: '', html, iconSize: [38, 38], iconAnchor: [19, 19] })
+    ? `<img src="${avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;display:block">`
+    : `<div style="width:38px;height:38px;background:#6366f1;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:15px">${initial}</div>`
+  const html = `<div style="width:46px;height:46px;border-radius:50%;background:${ring};box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center">
+      <div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden">${inner}</div>
+    </div>`
+  return L.divIcon({ className: '', html, iconSize: [46, 46], iconAnchor: [23, 23] })
 }
 
 function FlyTo({ pos }: { pos: [number, number] }) {

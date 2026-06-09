@@ -5,11 +5,15 @@ import 'leaflet/dist/leaflet.css'
 
 const DEFAULT_CENTER: [number, number] = [55.75, 37.62] // Moscow fallback
 
+// Teardrop "drop a pin here" marker in the brand color, anchored at the tip.
 const pinIcon = L.divIcon({
   className: '',
-  html: '<div style="width:18px;height:18px;background:#f97316;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
+  html: `<div style="position:relative;width:30px;height:40px">
+      <div style="position:absolute;left:0;top:0;width:30px;height:30px;background:#f97316;border:2.5px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 6px rgba(0,0,0,0.4)"></div>
+      <div style="position:absolute;left:11px;top:9px;width:8px;height:8px;border-radius:50%;background:white"></div>
+    </div>`,
+  iconSize: [30, 40],
+  iconAnchor: [15, 39],
 })
 
 interface LatLon {
