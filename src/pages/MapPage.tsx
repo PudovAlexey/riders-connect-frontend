@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import useWebSocket from 'react-use-websocket'
 import { getUsersOnMap, getPoints, createDirectChat } from '../api'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 import { useNavigate } from 'react-router-dom'
 import type { UserLocation, Point } from '../types'
 import BottomSheet from '../components/BottomSheet'
@@ -83,6 +84,7 @@ function ViewportPoints({ param, setPoints }: { param: CategoryParam; setPoints:
 
 export default function MapPage() {
   const { user, token } = useAuth()
+  const { isDark } = useTheme()
   const navigate = useNavigate()
   const [locations, setLocations] = useState<UserLocation[]>([])
   const [myPos, setMyPos] = useState<[number, number] | null>(null)
@@ -185,7 +187,12 @@ export default function MapPage() {
         zoomControl={false}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          key={isDark ? 'dark' : 'light'}
+          url={
+            isDark
+              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+          }
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
         />
 
@@ -261,7 +268,7 @@ export default function MapPage() {
       {/* Filter button */}
       <button
         onClick={() => setFilterOpen(true)}
-        className="absolute top-4 left-4 z-[1000] w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-primary active:bg-slate-50 transition-colors"
+        className="absolute top-4 left-4 z-[1000] w-12 h-12 bg-surface rounded-full shadow-lg flex items-center justify-center text-primary active:bg-slate-50 transition-colors"
         title="Filter"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
@@ -272,7 +279,7 @@ export default function MapPage() {
       {/* Locate me button */}
       <button
         onClick={locateMe}
-        className="absolute bottom-20 right-4 z-[1000] w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-primary active:bg-slate-50 transition-colors"
+        className="absolute bottom-20 right-4 z-[1000] w-12 h-12 bg-surface rounded-full shadow-lg flex items-center justify-center text-primary active:bg-slate-50 transition-colors"
         title="My location"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
@@ -281,13 +288,13 @@ export default function MapPage() {
       </button>
 
       {/* Online badge — real-time via WS */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur px-3 py-1 rounded-full shadow text-xs text-slate-600">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-surface/90 backdrop-blur px-3 py-1 rounded-full shadow text-xs text-slate-600">
         {onlineCount} rider{onlineCount !== 1 ? 's' : ''} online
       </div>
 
       {/* Filter sheet */}
       <BottomSheet open={filterOpen} onClose={() => setFilterOpen(false)}>
-        <div className="px-4 pb-8 pt-1 max-h-[75vh] overflow-y-auto">
+        <div className="px-4 pb-8 pt-1">
           <div className="flex items-center justify-between mb-3">
             <p className="text-lg font-bold text-slate-900">Map filters</p>
             <div className="flex gap-2">
@@ -332,7 +339,7 @@ export default function MapPage() {
       {/* Point detail sheet */}
       <BottomSheet open={!!activePoint} onClose={() => setActivePoint(null)}>
         {activePoint && (
-          <div className="px-4 pb-8 pt-1 max-h-[80vh] overflow-y-auto">
+          <div className="px-4 pb-8 pt-1">
             <div className="flex items-center gap-3 mb-3">
               <span
                 className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0"

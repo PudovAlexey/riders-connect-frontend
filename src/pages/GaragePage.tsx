@@ -5,6 +5,7 @@ import { useGarage } from '../hooks/useGarage'
 import PhotoPicker from '../components/PhotoPicker'
 import type { Vehicle } from '../types'
 import AppHeader from '../components/AppHeader'
+import BottomSheet from '../components/BottomSheet'
 
 function MotoIcon({ size = 64, className = '' }: { size?: number; className?: string }) {
   return (
@@ -103,6 +104,8 @@ export default function GaragePage() {
     setActiveIdx((prev) => Math.max(0, prev - 1))
   }
 
+  const closeForm = () => { setShowForm(false); setForm(EMPTY_FORM) }
+
   const field = (key: keyof typeof form, label: string, opts?: { type?: string; placeholder?: string; required?: boolean }) => (
     <div>
       <label className="block text-xs font-medium text-slate-500 mb-1">{label}{opts?.required !== false && ' *'}</label>
@@ -177,7 +180,7 @@ export default function GaragePage() {
                   className="min-w-full flex-shrink-0 flex flex-col items-center justify-center px-6 py-8 gap-5"
                   style={{ scrollSnapAlign: 'start' }}
                 >
-                  <div className="bg-white rounded-3xl shadow-sm w-full max-w-xs overflow-hidden flex flex-col items-center gap-4">
+                  <div className="bg-surface rounded-3xl shadow-sm w-full max-w-xs overflow-hidden flex flex-col items-center gap-4">
                     {v.photos?.length > 0 ? (
                       <img
                         src={v.photos[0]}
@@ -254,50 +257,39 @@ export default function GaragePage() {
       </div>
 
       {/* Add vehicle bottom sheet */}
-      {showForm && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/40 z-40"
-            onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }}
+      <BottomSheet open={showForm} onClose={closeForm}>
+        <div className="px-4 pt-1 pb-2">
+          <p className="text-lg font-bold text-slate-900">Add motorcycle</p>
+        </div>
+        <form onSubmit={handleAdd} className="px-4 pb-8 space-y-3">
+          <PhotoPicker
+            photos={form.photos}
+            onChange={(p) => setForm((f) => ({ ...f, photos: p }))}
+            max={5}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
-            <div className="w-full max-w-[440px] bg-white rounded-t-3xl shadow-2xl flex flex-col max-h-[90vh]">
-              <div className="px-4 pt-5 pb-2 flex-shrink-0">
-                <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
-                <p className="text-lg font-bold text-slate-900">Add motorcycle</p>
-              </div>
-              <form onSubmit={handleAdd} className="overflow-y-auto px-4 pb-8 space-y-3 flex-1">
-                <PhotoPicker
-                  photos={form.photos}
-                  onChange={(p) => setForm((f) => ({ ...f, photos: p }))}
-                  max={5}
-                />
-                {field('make', 'Make', { placeholder: 'Honda', required: true })}
-                {field('model', 'Model', { placeholder: 'CB650R', required: true })}
-                {field('year', 'Year', { type: 'number', placeholder: '2022', required: true })}
-                {field('color', 'Color', { placeholder: 'Red', required: false })}
-                {field('notes', 'Notes', { placeholder: 'Optional notes…', required: false })}
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={!form.make.trim() || !form.model.trim() || !form.year}
-                    className="flex-1 bg-primary text-white rounded-xl py-3.5 font-semibold text-sm disabled:opacity-40 transition-opacity"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }}
-                    className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3.5 font-semibold text-sm active:bg-slate-200"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
+          {field('make', 'Make', { placeholder: 'Honda', required: true })}
+          {field('model', 'Model', { placeholder: 'CB650R', required: true })}
+          {field('year', 'Year', { type: 'number', placeholder: '2022', required: true })}
+          {field('color', 'Color', { placeholder: 'Red', required: false })}
+          {field('notes', 'Notes', { placeholder: 'Optional notes…', required: false })}
+          <div className="flex gap-2 pt-2">
+            <button
+              type="submit"
+              disabled={!form.make.trim() || !form.model.trim() || !form.year}
+              className="flex-1 bg-primary text-white rounded-xl py-3.5 font-semibold text-sm disabled:opacity-40 transition-opacity"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={closeForm}
+              className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3.5 font-semibold text-sm active:bg-slate-200"
+            >
+              Cancel
+            </button>
           </div>
-        </>
-      )}
+        </form>
+      </BottomSheet>
     </div>
   )
 }

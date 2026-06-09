@@ -138,7 +138,7 @@ export default function ContactsPage() {
   const searching = query.trim().length > 0
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-surface">
       <AppHeader border onBack={() => navigate('/chat')} title="Contacts">
         <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-3 py-2">
           <span className="text-slate-400 text-sm">@</span>

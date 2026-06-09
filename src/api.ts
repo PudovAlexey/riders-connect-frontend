@@ -89,6 +89,12 @@ export const getMessages = (chatId: string, limit = 50, offset = 0) =>
 export const sendMessage = (chatId: string, content: string) =>
   api.post<import('./types').Message>(`/chat/chats/${chatId}/messages`, { content })
 
+export const editMessage = (chatId: string, messageId: string, content: string) =>
+  api.patch<import('./types').Message>(`/chat/chats/${chatId}/messages/${messageId}`, { content })
+
+export const deleteMessage = (chatId: string, messageId: string, scope: 'me' | 'all' = 'me') =>
+  api.delete(`/chat/chats/${chatId}/messages/${messageId}?scope=${scope}`)
+
 export const uploadMedia = (file: Blob, filename = 'upload') => {
   const form = new FormData()
   form.append('file', file, (file as File).name || filename)

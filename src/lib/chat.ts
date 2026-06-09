@@ -48,3 +48,7 @@ export function senderName(chat: Chat, senderId: string): string {
   const m = chat.members.find((x) => x.user_id === senderId)
   return m?.name || (m?.username ? `@${m.username}` : senderId.slice(0, 6))
 }
+
+export function senderAvatar(chat: Chat, senderId: string): string {
+  return chat.members.find((m) => m.user_id === senderId)?.avatar_url ?? ''
+}

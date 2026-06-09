@@ -100,7 +100,7 @@ export default function EventsPage() {
             <button
               key={e.id}
               onClick={() => navigate(`/events/${e.id}`)}
-              className="w-full text-left bg-white rounded-2xl shadow-sm p-4 active:bg-slate-50 transition-colors"
+              className="w-full text-left bg-surface rounded-2xl shadow-sm p-4 active:bg-slate-50 transition-colors"
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-semibold text-primary uppercase tracking-wide">
@@ -141,7 +141,7 @@ export default function EventsPage() {
         )}
       </div>
 
-      {showForm && <EventForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />}
+      <EventForm open={showForm} onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
     </div>
   )
 }

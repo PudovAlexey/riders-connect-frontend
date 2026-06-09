@@ -1,51 +1,40 @@
-import { useEffect, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { Sheet } from 'react-modal-sheet'
 
 interface BottomSheetProps {
   open: boolean
   onClose: () => void
   children: ReactNode
+  /** 'content' (default) sizes the sheet to its content; 'full' allows full height. */
+  detent?: 'content' | 'full'
+  /** Disable drag-to-dismiss (e.g. sheets that own their own gestures). */
+  disableDrag?: boolean
+  /** Show the grab handle at the top. Default true. */
+  showHandle?: boolean
 }
 
 /**
- * Generic slide-up bottom sheet: dimmed backdrop + rounded panel anchored to the
- * bottom, capped at the app's 440px width. Stays mounted so it animates both in
- * and out; tapping the backdrop closes it.
+ * Generic slide-up bottom sheet built on react-modal-sheet: gesture-driven
+ * (drag-to-dismiss + spring open/close), capped to the app's 440px column and
+ * themed via the `.react-modal-sheet-*` rules in index.css (follows light/dark
+ * automatically). The public API is intentionally unchanged ({ open, onClose,
+ * children }) so existing call sites keep working with no edits.
  */
-export default function BottomSheet({ open, onClose, children }: BottomSheetProps) {
-  // Lock background scroll while the sheet is open
-  useEffect(() => {
-    if (!open) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [open])
-
+export default function BottomSheet({
+  open,
+  onClose,
+  children,
+  detent = 'content',
+  disableDrag = false,
+  showHandle = true,
+}: BottomSheetProps) {
   return (
-    <div
-      className={`fixed inset-0 z-[4000] ${open ? '' : 'pointer-events-none'}`}
-      aria-hidden={!open}
-    >
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${
-          open ? 'opacity-100' : 'opacity-0'
-        }`}
-      />
-
-      {/* Sheet */}
-      <div className="absolute inset-x-0 bottom-0 flex justify-center">
-        <div
-          role="dialog"
-          aria-modal="true"
-          className={`w-full max-w-[440px] bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
-            open ? 'translate-y-0' : 'translate-y-full'
-          }`}
-        >
-          <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
-          {children}
-        </div>
-      </div>
-    </div>
+    <Sheet isOpen={open} onClose={onClose} detent={detent} disableDrag={disableDrag} avoidKeyboard>
+      <Sheet.Container role="dialog" aria-modal>
+        {showHandle && <Sheet.Header />}
+        <Sheet.Content>{children}</Sheet.Content>
+      </Sheet.Container>
+      <Sheet.Backdrop onTap={onClose} />
+    </Sheet>
   )
 }

@@ -72,7 +72,7 @@ const tabs: Tab[] = [
 export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[2000] flex justify-center">
-      <div className="w-full max-w-[440px] bg-white border-t border-slate-100 flex pb-[env(safe-area-inset-bottom)]">
+      <div className="w-full max-w-[440px] bg-surface border-t border-slate-100 flex pb-[env(safe-area-inset-bottom)]">
         {tabs.map((t) => (
           <NavLink
             key={t.to}

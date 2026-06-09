@@ -3,14 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom'
 import useWebSocket, { ReadyState } from 'react-use-websocket'
 import { ChatContainer, MessageList } from '@chatscope/chat-ui-kit-react'
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css'
-import { getMessages, getChats, uploadMedia, sendMessage as sendMessageRest } from '../api'
+import { getMessages, getChats, uploadMedia, sendMessage as sendMessageRest, editMessage, deleteMessage } from '../api'
 import { useAuth } from '../hooks/useAuth'
 import type { Message, Chat } from '../types'
-import { chatTitle, chatSubtitle, chatAvatarUrl, initial, senderName } from '../lib/chat'
+import { chatTitle, chatSubtitle, chatAvatarUrl, initial, senderName, senderAvatar } from '../lib/chat'
 import { buildWsUrl } from '../lib/config'
 import { playSend } from '../lib/sounds'
 import { useRecorder } from '../hooks/useRecorder'
+import { useLongPress } from '../hooks/useLongPress'
 import MessageContent from '../components/MessageContent'
+import MessageActionsSheet from '../components/MessageActionsSheet'
+import BottomSheet from '../components/BottomSheet'
 import VideoNoteRecorder from '../components/VideoNoteRecorder'
 import AppHeader from '../components/AppHeader'
 import AddMembersSheet from '../components/AddMembersSheet'
@@ -19,11 +22,29 @@ import ChatInputBar from '../components/chat/ChatInputBar'
 import { scrollChatToBottom } from '../components/chat/scroll'
 import '../components/chat/chat.css'
 
-type WsMsg = { type: string; message?: Message }
+type WsMsg = { type: string; message?: Message; message_id?: string; chat_id?: string }
 type SendState = 'loading' | 'failed'
 
 const MESSAGE_LIST_ID = 'chat-msg-list'
 const SEND_TIMEOUT_MS = 8000
+
+/** Wraps a message row so a long-press (or right-click) opens its action menu. */
+function LongPressable({
+  onLongPress,
+  className,
+  children,
+}: {
+  onLongPress: () => void
+  className?: string
+  children: React.ReactNode
+}) {
+  const handlers = useLongPress(onLongPress)
+  return (
+    <div className={className} style={{ WebkitTouchCallout: 'none' }} {...handlers}>
+      {children}
+    </div>
+  )
+}
 
 export default function ChatRoomPage() {
   const { chatId } = useParams<{ chatId: string }>()
@@ -38,6 +59,8 @@ export default function ChatRoomPage() {
   const [uploading, setUploading] = useState(false)
   const [showVideoNote, setShowVideoNote] = useState(false)
   const [sendStates, setSendStates] = useState<Record<string, SendState>>({})
+  const [menuMsg, setMenuMsg] = useState<Message | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Mirror of `messages` so WS handlers / retry can read the latest list
@@ -86,7 +109,23 @@ export default function ChatRoomPage() {
 
   // Real-time incoming
   useEffect(() => {
-    if (!lastJsonMessage || lastJsonMessage.type !== 'new_message' || !lastJsonMessage.message) return
+    if (!lastJsonMessage) return
+
+    if (lastJsonMessage.type === 'message_edited' && lastJsonMessage.message) {
+      const edited = lastJsonMessage.message
+      if (edited.chat_id !== chatId) return
+      setMessages((prev) => prev.map((m) => (m.id === edited.id ? edited : m)))
+      return
+    }
+
+    if (lastJsonMessage.type === 'message_deleted' && lastJsonMessage.message_id) {
+      if (lastJsonMessage.chat_id && lastJsonMessage.chat_id !== chatId) return
+      const deletedId = lastJsonMessage.message_id
+      setMessages((prev) => prev.filter((m) => m.id !== deletedId))
+      return
+    }
+
+    if (lastJsonMessage.type !== 'new_message' || !lastJsonMessage.message) return
     const msg = lastJsonMessage.message
     if (msg.chat_id !== chatId) return
 
@@ -153,7 +192,30 @@ export default function ChatRoomPage() {
     [chatId, readyState, sendJsonMessage, clearSendTimeout],
   )
 
+  const confirmEdit = useCallback(() => {
+    const content = text.trim()
+    const id = editingId
+    if (!content || !chatId || !id) return
+    setEditingId(null)
+    setText('')
+    editMessage(chatId, id, content)
+      .then((res) => {
+        const updated = res.data
+        setMessages((prev) => prev.map((m) => (m.id === id ? updated : m)))
+      })
+      .catch(() => { /* server rejects (e.g. not author) — leave message as is */ })
+  }, [text, chatId, editingId])
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null)
+    setText('')
+  }, [])
+
   const send = useCallback(() => {
+    if (editingId) {
+      confirmEdit()
+      return
+    }
     const content = text.trim()
     if (!content || !chatId || !user) return
 
@@ -174,7 +236,30 @@ export default function ChatRoomPage() {
     requestAnimationFrame(() => scrollChatToBottom(MESSAGE_LIST_ID))
 
     dispatchSend(optimisticId, content)
-  }, [text, chatId, user, dispatchSend])
+  }, [text, chatId, user, dispatchSend, editingId, confirmEdit])
+
+  // ─── Message actions (long-press menu) ───
+
+  const startEdit = useCallback((msg: Message) => {
+    setMenuMsg(null)
+    setEditingId(msg.id)
+    setText(msg.content)
+  }, [])
+
+  const removeLocally = useCallback((id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id))
+  }, [])
+
+  const handleDelete = useCallback(
+    (msg: Message, scope: 'me' | 'all') => {
+      setMenuMsg(null)
+      if (!chatId) return
+      if (editingId === msg.id) cancelEdit()
+      removeLocally(msg.id)
+      deleteMessage(chatId, msg.id, scope).catch(() => { /* best-effort */ })
+    },
+    [chatId, editingId, cancelEdit, removeLocally],
+  )
 
   const handleRetry = useCallback(
     (id: string) => {
@@ -265,12 +350,18 @@ export default function ChatRoomPage() {
     )
   }
 
-  const renderMessage = (msg: Message) => {
+  const renderMessage = (msg: Message, prev?: Message, next?: Message) => {
     const mine = isMe(msg)
     const type = msg.message_type || 'text'
     const isNote = type === 'video_note'
     const isMedia = type !== 'text'
     const state = msg.id ? sendStates[msg.id] : undefined
+
+    // Telegram-style runs: avatar (bottom-left) on the last message of a run,
+    // sender name (top) on the first — only for incoming group messages.
+    const showAvatarColumn = isGroup && !mine && !!chat
+    const isFirstOfRun = !prev || prev.sender_id !== msg.sender_id
+    const isLastOfRun = !next || next.sender_id !== msg.sender_id
 
     const bubbleClass = isNote
       ? ''
@@ -279,11 +370,25 @@ export default function ChatRoomPage() {
         }`
 
     return (
-      <div key={msg.id} className={`flex items-end gap-1.5 ${mine ? 'justify-end' : 'justify-start'}`}>
+      <div key={msg.id} className={`flex items-end gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
         {mine && state && renderStatus(msg.id, state)}
+        {showAvatarColumn &&
+          (isLastOfRun ? (
+            <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {senderAvatar(chat, msg.sender_id) ? (
+                <img src={senderAvatar(chat, msg.sender_id)} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-indigo-500 font-semibold text-[11px]">
+                  {initial(senderName(chat, msg.sender_id))}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="w-7 flex-shrink-0" />
+          ))}
         <div className={`flex flex-col max-w-[75%] ${mine ? 'items-end' : 'items-start'}`}>
           <div className={bubbleClass}>
-            {isGroup && !mine && chat && (
+            {showAvatarColumn && isFirstOfRun && (
               <p className={`text-[11px] font-semibold text-indigo-500 mb-0.5 ${isMedia && !isNote ? 'px-3 pt-2' : ''}`}>
                 {senderName(chat, msg.sender_id)}
               </p>
@@ -332,7 +437,7 @@ export default function ChatRoomPage() {
   )
 
   const footer = audioRec.recording ? (
-    <div className="flex items-center gap-3 px-4 py-3 border-t border-slate-100 bg-white">
+    <div className="flex items-center gap-3 px-4 py-3 border-t border-slate-100 bg-surface">
       <button
         onClick={audioRec.cancel}
         className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0"
@@ -385,7 +490,9 @@ export default function ChatRoomPage() {
                   <p className="text-slate-400 text-sm">No messages yet. Say hi!</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2 px-4 py-3">{messages.map(renderMessage)}</div>
+                <div className="flex flex-col gap-2 px-4 py-3">
+                  {messages.map((m, i) => renderMessage(m, messages[i - 1], messages[i + 1]))}
+                </div>
               )}
             </MessageList.Content>
           </MessageList>
@@ -409,16 +516,10 @@ export default function ChatRoomPage() {
       )}
 
       {/* Participants panel */}
-      {showMembers && chat && (
-        <div
-          className="fixed inset-0 z-[3000] flex items-end justify-center bg-black/30"
-          onClick={() => setShowMembers(false)}
-        >
-          <div
-            className="w-full max-w-[440px] bg-white rounded-t-2xl max-h-[70vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100">
+      <BottomSheet open={showMembers && !!chat} onClose={() => setShowMembers(false)}>
+        {chat && (
+          <>
+            <div className="flex items-center justify-between px-4 pt-1 pb-3 border-b border-slate-100">
               <div>
                 <p className="font-semibold text-slate-900">Participants</p>
                 <p className="text-xs text-slate-400">{chat.members.length} {chat.members.length === 1 ? 'member' : 'members'}</p>
@@ -432,7 +533,7 @@ export default function ChatRoomPage() {
                 </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div>
               {chat.members.map((m) => (
                 <div key={m.user_id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
                   <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -458,7 +559,7 @@ export default function ChatRoomPage() {
               ))}
             </div>
             {isGroup && (
-              <div className="px-4 py-3 border-t border-slate-100">
+              <div className="px-4 py-3">
                 <button
                   onClick={() => setShowAddMembers(true)}
                   className="w-full flex items-center justify-center gap-2 bg-primary text-white rounded-xl py-3 font-semibold text-sm active:opacity-80"
@@ -470,9 +571,9 @@ export default function ChatRoomPage() {
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BottomSheet>
 
       {chat && (
         <AddMembersSheet

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 import { useGarage } from '../hooks/useGarage'
 import { isMuted, setMuted } from '../lib/sounds'
 import { isPushSupported, getPushState, enablePush, disablePush } from '../lib/push'
@@ -24,6 +25,14 @@ function ChevronIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-300 flex-shrink-0">
       <path d="M9 5l7 7-7 7" />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   )
 }
@@ -57,7 +66,7 @@ function MenuRow({ icon, label, sublabel, onClick, trailing, danger }: MenuRowPr
 
 function SectionCard({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
       {title && (
         <div className="px-4 pt-4 pb-2">
           <p className="text-sm font-semibold text-slate-900">{title}</p>
@@ -70,6 +79,7 @@ function SectionCard({ title, children }: { title?: string; children: React.Reac
 
 export default function ProfilePage() {
   const { user, logout, promptLogin } = useAuth()
+  const { isDark, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const { vehicles } = useGarage()
   const [copied, setCopied] = useState(false)
@@ -107,7 +117,7 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-white px-8 gap-5">
+      <div className="flex flex-col items-center justify-center h-screen bg-surface px-8 gap-5">
         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-orange-200">
           ?
         </div>
@@ -153,7 +163,7 @@ export default function ProfilePage() {
 
       <div className="flex-1 px-4 py-4 space-y-3 pb-24">
         {/* User info card */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-surface rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center gap-4 px-4 py-5">
             <div className="flex-1 min-w-0">
               <p className="text-2xl font-bold text-slate-900 truncate">
@@ -227,6 +237,12 @@ export default function ProfilePage() {
 
         {/* Settings section */}
         <SectionCard title="Settings">
+          <MenuRow
+            icon={<MoonIcon />}
+            label="Тёмная тема"
+            onClick={toggleTheme}
+            trailing={<Switch on={isDark} />}
+          />
           <MenuRow
             icon={
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">

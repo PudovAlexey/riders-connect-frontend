@@ -27,7 +27,7 @@ export default function ProfileEditPage() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-white px-8 gap-5">
+      <div className="flex flex-col items-center justify-center h-screen bg-surface px-8 gap-5">
         <p className="text-slate-500 text-sm">Sign in to edit your profile</p>
         <button
           onClick={promptLogin}
@@ -109,7 +109,7 @@ export default function ProfileEditPage() {
 
       <form onSubmit={handleSave} className="flex-1 px-4 py-4 space-y-3 pb-24">
         {/* Avatar */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden px-4 py-6 flex flex-col items-center">
+        <div className="bg-surface rounded-2xl shadow-sm overflow-hidden px-4 py-6 flex flex-col items-center">
           <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center shadow-md shadow-orange-100">
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -142,7 +142,7 @@ export default function ProfileEditPage() {
         </div>
 
         {/* Fields */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden px-4 py-4 space-y-3">
+        <div className="bg-surface rounded-2xl shadow-sm overflow-hidden px-4 py-4 space-y-3">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Display name</label>
             <input

@@ -34,7 +34,7 @@ export default function ChatLayout({ header, children, footer }: ChatLayoutProps
         height,
         maxHeight: height,
         width: '100%',
-        background: '#f1f5f9',
+        background: 'rgb(var(--c-bg))',
         overflow: 'hidden',
       }}
     >
@@ -48,7 +48,7 @@ export default function ChatLayout({ header, children, footer }: ChatLayoutProps
           maxWidth: 440,
           minWidth: 0,
           overflow: 'hidden',
-          background: '#fff',
+          background: 'rgb(var(--c-surface))',
         }}
       >
         <div style={{ minWidth: 0, overflow: 'hidden' }}>{header}</div>
@@ -59,7 +59,7 @@ export default function ChatLayout({ header, children, footer }: ChatLayoutProps
           style={{
             minWidth: 0,
             overflow: 'hidden',
-            background: '#fff',
+            background: 'rgb(var(--c-surface))',
             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           }}
         >

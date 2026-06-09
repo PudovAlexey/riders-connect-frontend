@@ -96,7 +96,7 @@ export default function AddMembersSheet({ open, chat, onClose, onAdded }: AddMem
 
   return (
     <BottomSheet open={open} onClose={close}>
-      <div className="flex flex-col max-h-[70vh]">
+      <div>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
           <p className="font-semibold text-slate-900">Add members</p>
           <button
@@ -136,7 +136,7 @@ export default function AddMembersSheet({ open, chat, onClose, onAdded }: AddMem
         {error && <p className="px-4 text-sm text-red-500">{error}</p>}
 
         {/* People list */}
-        <div className="flex-1 overflow-y-auto">
+        <div>
           {!query.trim() && (
             <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Contacts</p>
           )}

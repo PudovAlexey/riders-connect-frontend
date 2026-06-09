@@ -84,7 +84,7 @@ export default function NewChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-surface">
       <AppHeader border onBack={() => navigate('/chat')} title={`New ${mode === 'group' ? 'group' : 'chat'}`} />
 
       {/* Mode tabs */}

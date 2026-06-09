@@ -129,7 +129,7 @@ export default function EventDetailPage() {
     <Shell onBack={() => navigate('/events')}>
       <div className="px-4 py-4 space-y-4 pb-24">
         {/* Header card */}
-        <div className="bg-white rounded-2xl shadow-sm p-4">
+        <div className="bg-surface rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-semibold text-primary uppercase tracking-wide">{typeLabel(event.type)}</span>
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
@@ -145,7 +145,7 @@ export default function EventDetailPage() {
 
         {/* Trip destination */}
         {event.type === 'trip' && dest && (
-          <div className="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+          <div className="bg-surface rounded-2xl shadow-sm p-4 space-y-2">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Destination</p>
             <LocationPicker value={{ lat: dest.lat, lon: dest.lon }} readOnly height={180} />
             {dest.address && <p className="text-sm text-slate-600">📍 {dest.address}</p>}
@@ -163,7 +163,7 @@ export default function EventDetailPage() {
         )}
 
         {/* Participants */}
-        <div className="bg-white rounded-2xl shadow-sm p-4">
+        <div className="bg-surface rounded-2xl shadow-sm p-4">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
             Participants ({event.participants.length})
           </p>
@@ -193,7 +193,7 @@ export default function EventDetailPage() {
 
         {/* Invite (any accepted participant can invite) */}
         {amAccepted && (
-          <div className="bg-white rounded-2xl shadow-sm p-4">
+          <div className="bg-surface rounded-2xl shadow-sm p-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Invite people</p>
             <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
               <span className="text-slate-400 text-sm">@</span>
@@ -249,7 +249,7 @@ export default function EventDetailPage() {
         )}
       </div>
 
-      {showEdit && <EventForm initial={event} onSubmit={handleEdit} onCancel={() => setShowEdit(false)} />}
+      <EventForm open={showEdit} initial={event} onSubmit={handleEdit} onCancel={() => setShowEdit(false)} />
     </Shell>
   )
 }

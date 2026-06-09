@@ -16,7 +16,7 @@ export default function AppHeader({ title, subtitle, onBack, actions, border, ch
   const titleIsNode = title != null && typeof title !== 'string' && typeof title !== 'number'
 
   return (
-    <div className={`bg-white px-2 pt-12 ${border ? 'border-b border-slate-100' : ''}`}>
+    <div className={`bg-surface px-2 pt-12 ${border ? 'border-b border-slate-100' : ''}`}>
       <div className="h-14 flex items-center gap-1">
         {onBack && (
           <button

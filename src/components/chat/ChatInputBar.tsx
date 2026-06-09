@@ -32,7 +32,7 @@ export default function ChatInputBar({
         e.preventDefault()
         onSubmit()
       }}
-      className="flex items-center gap-2 px-4 py-3 border-t border-slate-100 bg-white"
+      className="flex items-center gap-2 px-4 py-3 border-t border-slate-100 bg-surface"
     >
       <button
         type="button"

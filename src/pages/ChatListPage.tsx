@@ -33,7 +33,7 @@ export default function ChatListPage() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-white px-8 gap-5">
+      <div className="flex flex-col items-center justify-center h-screen bg-surface px-8 gap-5">
         <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center shadow-lg shadow-orange-200">
           <svg viewBox="0 0 24 24" fill="white" className="w-10 h-10">
             <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -54,7 +54,9 @@ export default function ChatListPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="min-h-dvh bg-surface">
+      {/* Static header — only the chat list below scrolls. */}
+      <div className="sticky top-0 z-30 bg-surface">
       <AppHeader
         title="Messages"
         border
@@ -93,9 +95,10 @@ export default function ChatListPage() {
           />
         </div>
       </AppHeader>
+      </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />

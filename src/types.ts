@@ -74,6 +74,7 @@ export interface Message {
   attachment_url?: string
   attachment_meta?: Record<string, any>
   created_at: string
+  edited_at?: string
 }
 
 export interface UploadResponse {
