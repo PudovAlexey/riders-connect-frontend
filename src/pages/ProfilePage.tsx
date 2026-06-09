@@ -2,7 +2,23 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useGarage } from '../hooks/useGarage'
+import { isMuted, setMuted } from '../lib/sounds'
+import { isPushSupported, getPushState, enablePush, disablePush } from '../lib/push'
 import AppHeader from '../components/AppHeader'
+
+function Switch({ on }: { on: boolean }) {
+  return (
+    <span
+      className={`w-11 h-6 rounded-full flex items-center px-0.5 transition-colors flex-shrink-0 ${
+        on ? 'bg-primary' : 'bg-slate-200'
+      }`}
+    >
+      <span
+        className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : ''}`}
+      />
+    </span>
+  )
+}
 
 function ChevronIcon() {
   return (
@@ -57,6 +73,37 @@ export default function ProfilePage() {
   const navigate = useNavigate()
   const { vehicles } = useGarage()
   const [copied, setCopied] = useState(false)
+  const [soundOn, setSoundOn] = useState(!isMuted())
+  const pushSupported = isPushSupported()
+  const [pushOn, setPushOn] = useState(() => getPushState().enabled)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushHint, setPushHint] = useState('')
+
+  const toggleSound = () => {
+    const next = !soundOn
+    setSoundOn(next)
+    setMuted(!next)
+  }
+
+  const togglePush = async () => {
+    if (pushBusy) return
+    setPushBusy(true)
+    setPushHint('')
+    try {
+      if (!pushOn) {
+        const perm = await enablePush()
+        if (perm === 'granted') setPushOn(true)
+        else if (perm === 'denied') setPushHint('Уведомления заблокированы в настройках браузера')
+      } else {
+        await disablePush()
+        setPushOn(false)
+      }
+    } catch {
+      setPushHint('Не удалось включить push')
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   if (!user) {
     return (
@@ -176,6 +223,34 @@ export default function ProfilePage() {
               )
             }
           />
+        </SectionCard>
+
+        {/* Settings section */}
+        <SectionCard title="Settings">
+          <MenuRow
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 01-3.46 0" />
+              </svg>
+            }
+            label="Звук уведомлений"
+            onClick={toggleSound}
+            trailing={<Switch on={soundOn} />}
+          />
+          {pushSupported && (
+            <MenuRow
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+                  <path d="M4 4l16 16M9 4h6a2 2 0 012 2v6m-1.6 4H6a2 2 0 01-1.6-3.2L6 11V8" />
+                </svg>
+              }
+              label="Push-уведомления"
+              sublabel={pushHint || undefined}
+              onClick={togglePush}
+              trailing={<Switch on={pushOn} />}
+            />
+          )}
         </SectionCard>
 
         {/* Logout section */}

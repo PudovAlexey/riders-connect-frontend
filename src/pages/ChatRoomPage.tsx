@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import type { Message, Chat } from '../types'
 import { chatTitle, chatSubtitle, chatAvatarUrl, initial, senderName } from '../lib/chat'
 import { buildWsUrl } from '../lib/config'
+import { playSend } from '../lib/sounds'
 import { useRecorder } from '../hooks/useRecorder'
 import MessageContent from '../components/MessageContent'
 import VideoNoteRecorder from '../components/VideoNoteRecorder'
@@ -72,6 +73,7 @@ export default function ChatRoomPage() {
     e.preventDefault()
     if (!text.trim() || !chatId) return
     sendJsonMessage({ type: 'send_message', chat_id: chatId, content: text.trim() })
+    playSend()
     setText('')
   }
 
@@ -85,6 +87,7 @@ export default function ChatRoomPage() {
       attachment_url: url,
       attachment_meta: meta ?? null,
     })
+    playSend()
   }
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {

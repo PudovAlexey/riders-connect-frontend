@@ -71,6 +71,15 @@ export const uploadMedia = (file: Blob, filename = 'upload') => {
   return api.post<import('./types').UploadResponse>('/media/upload', form)
 }
 
+export const getPushPublicKey = () =>
+  api.get<{ public_key: string }>('/push/public-key')
+
+export const savePushSubscription = (sub: PushSubscriptionJSON) =>
+  api.post('/push/subscription', sub)
+
+export const deletePushSubscription = (endpoint: string) =>
+  api.delete('/push/subscription', { data: { endpoint } })
+
 export const getContacts = () =>
   api.get<import('./types').Contact[]>('/contacts/')
 
