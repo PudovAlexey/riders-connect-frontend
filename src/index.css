@@ -4,12 +4,35 @@
 
 * { box-sizing: border-box; }
 
+html {
+  -webkit-text-size-adjust: 100%;   /* запрет авто-увеличения текста */
+  text-size-adjust: 100%;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   background: #f8fafc;
+  overscroll-behavior: none;        /* убрать rubber-band «отскок» страницы */
+}
+
+body {
+  -webkit-touch-callout: none;      /* нет меню по долгому тапу */
+  -webkit-user-select: none;        /* полный lockdown: нет выделения текста */
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;  /* нет серой вспышки по тапу */
+  touch-action: manipulation;       /* нет double-tap зума */
+  overflow-x: hidden;
+}
+
+/* Поля ввода — оставляем редактируемыми и без focus-зума */
+input, textarea, select, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+  font-size: 16px;                  /* <16px вызывает авто-зум iOS при фокусе */
 }
 
 /* leaflet */
