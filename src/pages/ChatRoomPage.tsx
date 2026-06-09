@@ -1,7 +1,9 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import useWebSocket from 'react-use-websocket'
-import { getMessages, getChats, uploadMedia } from '../api'
+import useWebSocket, { ReadyState } from 'react-use-websocket'
+import { ChatContainer, MessageList } from '@chatscope/chat-ui-kit-react'
+import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css'
+import { getMessages, getChats, uploadMedia, sendMessage as sendMessageRest } from '../api'
 import { useAuth } from '../hooks/useAuth'
 import type { Message, Chat } from '../types'
 import { chatTitle, chatSubtitle, chatAvatarUrl, initial, senderName } from '../lib/chat'
@@ -12,8 +14,16 @@ import MessageContent from '../components/MessageContent'
 import VideoNoteRecorder from '../components/VideoNoteRecorder'
 import AppHeader from '../components/AppHeader'
 import AddMembersSheet from '../components/AddMembersSheet'
+import ChatLayout from '../components/chat/ChatLayout'
+import ChatInputBar from '../components/chat/ChatInputBar'
+import { scrollChatToBottom } from '../components/chat/scroll'
+import '../components/chat/chat.css'
 
 type WsMsg = { type: string; message?: Message }
+type SendState = 'loading' | 'failed'
+
+const MESSAGE_LIST_ID = 'chat-msg-list'
+const SEND_TIMEOUT_MS = 8000
 
 export default function ChatRoomPage() {
   const { chatId } = useParams<{ chatId: string }>()
@@ -27,14 +37,29 @@ export default function ChatRoomPage() {
   const [showAddMembers, setShowAddMembers] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [showVideoNote, setShowVideoNote] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const [sendStates, setSendStates] = useState<Record<string, SendState>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Mirror of `messages` so WS handlers / retry can read the latest list
+  // without re-subscribing.
+  const messagesRef = useRef<Message[]>([])
+  useEffect(() => { messagesRef.current = messages }, [messages])
+
+  // Per-optimistic-id safety timeouts (mark as failed if no WS echo arrives).
+  const timeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const clearSendTimeout = useCallback((id: string) => {
+    const t = timeoutsRef.current[id]
+    if (t) {
+      clearTimeout(t)
+      delete timeoutsRef.current[id]
+    }
+  }, [])
 
   const audioRec = useRecorder('audio')
 
   const wsUrl = token ? buildWsUrl(`/ws?token=${token}`) : null
 
-  const { sendJsonMessage, lastJsonMessage } = useWebSocket<WsMsg>(wsUrl, {
+  const { sendJsonMessage, lastJsonMessage, readyState } = useWebSocket<WsMsg>(wsUrl, {
     shouldReconnect: () => true,
     share: true,
   })
@@ -42,6 +67,7 @@ export default function ChatRoomPage() {
   // Load history + chat metadata
   useEffect(() => {
     if (!chatId) return
+    setLoading(true)
     getMessages(chatId)
       .then((r) => setMessages(r.data.slice().reverse()))
       .finally(() => setLoading(false))
@@ -50,32 +76,115 @@ export default function ChatRoomPage() {
       .catch(() => {})
   }, [chatId])
 
+  // Clear any pending send timeouts when leaving the chat.
+  useEffect(() => {
+    const timeouts = timeoutsRef.current
+    return () => {
+      Object.values(timeouts).forEach(clearTimeout)
+    }
+  }, [chatId])
+
   // Real-time incoming
   useEffect(() => {
-    if (!lastJsonMessage) return
-    if (lastJsonMessage.type === 'new_message' && lastJsonMessage.message) {
-      const msg = lastJsonMessage.message
-      if (msg.chat_id === chatId) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === msg.id)) return prev
-          return [...prev, msg]
+    if (!lastJsonMessage || lastJsonMessage.type !== 'new_message' || !lastJsonMessage.message) return
+    const msg = lastJsonMessage.message
+    if (msg.chat_id !== chatId) return
+
+    // Our own message echoed back over WS == the "sent" confirmation:
+    // replace the matching optimistic bubble in place.
+    if (msg.sender_id === user?.id) {
+      const optimistic = messagesRef.current.find(
+        (m) => m.id.startsWith('optimistic-') && m.content === msg.content,
+      )
+      if (optimistic) {
+        const optId = optimistic.id
+        clearSendTimeout(optId)
+        setSendStates((s) => {
+          const next = { ...s }
+          delete next[optId]
+          return next
         })
+        setMessages((prev) => prev.map((m) => (m.id === optId ? msg : m)))
+        return
       }
     }
-  }, [lastJsonMessage, chatId])
 
-  // Scroll to bottom on new messages
+    setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
+  }, [lastJsonMessage, chatId, user?.id, clearSendTimeout])
+
+  // Stick to the bottom once the history finishes loading.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    if (loading) return
+    requestAnimationFrame(() => scrollChatToBottom(MESSAGE_LIST_ID))
+  }, [loading])
 
-  const send = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!text.trim() || !chatId) return
-    sendJsonMessage({ type: 'send_message', chat_id: chatId, content: text.trim() })
-    playSend()
+  // ─── Sending ───
+
+  const dispatchSend = useCallback(
+    (optimisticId: string, content: string) => {
+      if (!chatId) return
+
+      if (readyState === ReadyState.OPEN) {
+        sendJsonMessage({ type: 'send_message', chat_id: chatId, content })
+        clearSendTimeout(optimisticId)
+        timeoutsRef.current[optimisticId] = setTimeout(() => {
+          setSendStates((s) => (s[optimisticId] === 'loading' ? { ...s, [optimisticId]: 'failed' } : s))
+          delete timeoutsRef.current[optimisticId]
+        }, SEND_TIMEOUT_MS)
+        return
+      }
+
+      // WebSocket is down — fall back to the REST endpoint, which gives us a
+      // definitive success/failure to drive the optimistic state.
+      sendMessageRest(chatId, content)
+        .then((res) => {
+          const real = res.data
+          setSendStates((s) => {
+            const next = { ...s }
+            delete next[optimisticId]
+            return next
+          })
+          setMessages((prev) => prev.map((m) => (m.id === optimisticId ? real : m)))
+        })
+        .catch(() => {
+          setSendStates((s) => ({ ...s, [optimisticId]: 'failed' }))
+        })
+    },
+    [chatId, readyState, sendJsonMessage, clearSendTimeout],
+  )
+
+  const send = useCallback(() => {
+    const content = text.trim()
+    if (!content || !chatId || !user) return
+
+    const optimisticId = `optimistic-${Date.now()}`
+    const optimisticMsg: Message = {
+      id: optimisticId,
+      chat_id: chatId,
+      sender_id: user.id,
+      content,
+      message_type: 'text',
+      created_at: new Date().toISOString(),
+    }
+
+    setMessages((prev) => [...prev, optimisticMsg])
+    setSendStates((s) => ({ ...s, [optimisticId]: 'loading' }))
     setText('')
-  }
+    playSend()
+    requestAnimationFrame(() => scrollChatToBottom(MESSAGE_LIST_ID))
+
+    dispatchSend(optimisticId, content)
+  }, [text, chatId, user, dispatchSend])
+
+  const handleRetry = useCallback(
+    (id: string) => {
+      const msg = messagesRef.current.find((m) => m.id === id)
+      if (!msg) return
+      setSendStates((s) => ({ ...s, [id]: 'loading' }))
+      dispatchSend(id, msg.content)
+    },
+    [dispatchSend],
+  )
 
   const sendAttachment = (messageType: string, url: string, meta?: Record<string, any>) => {
     if (!chatId) return
@@ -88,6 +197,7 @@ export default function ChatRoomPage() {
       attachment_meta: meta ?? null,
     })
     playSend()
+    requestAnimationFrame(() => scrollChatToBottom(MESSAGE_LIST_ID))
   }
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,171 +244,153 @@ export default function ChatRoomPage() {
   const subtitle = chat ? chatSubtitle(chat, user?.id) : ''
   const avatar = chat ? chatAvatarUrl(chat, user?.id) : ''
 
-  return (
-    <div className="flex flex-col h-screen bg-white">
-      <AppHeader
-        border
-        onBack={() => navigate('/chat')}
-        title={
-          <button
-            onClick={() => chat && setShowMembers(true)}
-            disabled={!chat}
-            className="flex items-center gap-3 min-w-0 w-full text-left active:opacity-70 transition-opacity"
-          >
-            <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-              {avatar ? (
-                <img src={avatar} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-indigo-500 font-semibold text-sm">{initial(title)}</span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-slate-900 truncate leading-tight">{title}</p>
-              <p className="text-xs text-slate-400 truncate">
-                {chat ? `${chat.members.length} ${chat.members.length === 1 ? 'member' : 'members'}` : subtitle}
+  const renderStatus = (id: string, state: SendState) => {
+    if (state === 'loading') {
+      return (
+        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin flex-shrink-0 mb-1.5" />
+      )
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => handleRetry(id)}
+        title="Tap to retry"
+        className="w-5 h-5 flex items-center justify-center text-red-500 flex-shrink-0 mb-1.5"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+          <path d="M1 4v6h6M23 20v-6h-6" />
+          <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" />
+        </svg>
+      </button>
+    )
+  }
+
+  const renderMessage = (msg: Message) => {
+    const mine = isMe(msg)
+    const type = msg.message_type || 'text'
+    const isNote = type === 'video_note'
+    const isMedia = type !== 'text'
+    const state = msg.id ? sendStates[msg.id] : undefined
+
+    const bubbleClass = isNote
+      ? ''
+      : `rounded-2xl text-sm ${isMedia ? 'p-1' : 'px-4 py-2.5'} ${
+          mine ? 'bg-primary text-white rounded-tr-sm' : 'bg-slate-100 text-slate-900 rounded-tl-sm'
+        }`
+
+    return (
+      <div key={msg.id} className={`flex items-end gap-1.5 ${mine ? 'justify-end' : 'justify-start'}`}>
+        {mine && state && renderStatus(msg.id, state)}
+        <div className={`flex flex-col max-w-[75%] ${mine ? 'items-end' : 'items-start'}`}>
+          <div className={bubbleClass}>
+            {isGroup && !mine && chat && (
+              <p className={`text-[11px] font-semibold text-indigo-500 mb-0.5 ${isMedia && !isNote ? 'px-3 pt-2' : ''}`}>
+                {senderName(chat, msg.sender_id)}
               </p>
-            </div>
-          </button>
-        }
-      />
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400 text-sm">No messages yet. Say hi!</p>
-          </div>
-        ) : (
-          messages.map((msg) => {
-            const type = msg.message_type || 'text'
-            const isNote = type === 'video_note'
-            const isMedia = type !== 'text'
-            const bubbleClass = isNote
-              ? 'max-w-[75%]'
-              : `max-w-[75%] rounded-2xl text-sm ${isMedia ? 'p-1' : 'px-4 py-2.5'} ${
-                  isMe(msg)
-                    ? 'bg-primary text-white rounded-tr-sm'
-                    : 'bg-slate-100 text-slate-900 rounded-tl-sm'
-                }`
-            return (
-              <div
-                key={msg.id}
-                className={`flex ${isMe(msg) ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={bubbleClass}>
-                  {isGroup && !isMe(msg) && chat && (
-                    <p className={`text-[11px] font-semibold text-indigo-500 mb-0.5 ${isMedia && !isNote ? 'px-3 pt-2' : ''}`}>
-                      {senderName(chat, msg.sender_id)}
-                    </p>
-                  )}
-                  <MessageContent msg={msg} isMe={isMe(msg)} />
-                  {!isNote && (
-                    <p className={`text-[10px] mt-1 ${isMedia ? 'px-3 pb-1.5' : ''} ${isMe(msg) ? 'text-orange-100' : 'text-slate-400'}`}>
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )
-          })
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      {audioRec.recording ? (
-        <div className="flex items-center gap-3 px-4 py-3 border-t border-slate-100 bg-white">
-          <button
-            onClick={audioRec.cancel}
-            className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-              <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" />
-            </svg>
-          </button>
-          <div className="flex-1 flex items-center gap-2 text-slate-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-sm tabular-nums">
-              {`${Math.floor(audioRec.seconds / 60)}:${(audioRec.seconds % 60).toString().padStart(2, '0')}`}
-            </span>
-            <span className="text-xs text-slate-400">Recording…</span>
-          </div>
-          <button
-            onClick={toggleAudio}
-            className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white flex-shrink-0"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 translate-x-0.5">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          </button>
-        </div>
-      ) : (
-        <form
-          onSubmit={send}
-          className="flex items-center gap-2 px-4 py-3 border-t border-slate-100 bg-white"
-        >
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 flex-shrink-0 disabled:opacity-50"
-          >
-            {uploading ? (
-              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-              </svg>
             )}
-          </button>
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Message..."
-            className="flex-1 bg-slate-100 rounded-full px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
-          />
-          {text.trim() ? (
-            <button
-              type="submit"
-              className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white flex-shrink-0"
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 translate-x-0.5">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-              </svg>
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setShowVideoNote(true)}
-                title="Video message"
-                className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 flex-shrink-0"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={toggleAudio}
-                title="Voice message"
-                className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white flex-shrink-0"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-                  <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                  <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" />
-                </svg>
-              </button>
-            </>
+            <MessageContent msg={msg} isMe={mine} />
+            {!isNote && (
+              <p className={`text-[10px] mt-1 ${isMedia ? 'px-3 pb-1.5' : ''} ${mine ? 'text-orange-100' : 'text-slate-400'}`}>
+                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+          </div>
+          {mine && state === 'failed' && (
+            <span className="text-[10px] text-red-400 mt-0.5">Not delivered · tap to retry</span>
           )}
-        </form>
-      )}
+        </div>
+      </div>
+    )
+  }
+
+  const header = (
+    <AppHeader
+      border
+      onBack={() => navigate('/chat')}
+      title={
+        <button
+          onClick={() => chat && setShowMembers(true)}
+          disabled={!chat}
+          className="flex items-center gap-3 min-w-0 w-full text-left active:opacity-70 transition-opacity"
+        >
+          <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {avatar ? (
+              <img src={avatar} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-indigo-500 font-semibold text-sm">{initial(title)}</span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-900 truncate leading-tight">{title}</p>
+            <p className="text-xs text-slate-400 truncate">
+              {chat ? `${chat.members.length} ${chat.members.length === 1 ? 'member' : 'members'}` : subtitle}
+            </p>
+          </div>
+        </button>
+      }
+    />
+  )
+
+  const footer = audioRec.recording ? (
+    <div className="flex items-center gap-3 px-4 py-3 border-t border-slate-100 bg-white">
+      <button
+        onClick={audioRec.cancel}
+        className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+          <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" />
+        </svg>
+      </button>
+      <div className="flex-1 flex items-center gap-2 text-slate-700">
+        <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+        <span className="text-sm tabular-nums">
+          {`${Math.floor(audioRec.seconds / 60)}:${(audioRec.seconds % 60).toString().padStart(2, '0')}`}
+        </span>
+        <span className="text-xs text-slate-400">Recording…</span>
+      </div>
+      <button
+        onClick={toggleAudio}
+        className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white flex-shrink-0"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 translate-x-0.5">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+        </svg>
+      </button>
+    </div>
+  ) : (
+    <ChatInputBar
+      value={text}
+      onChange={setText}
+      onSubmit={send}
+      uploading={uploading}
+      onAttach={() => fileInputRef.current?.click()}
+      onVideoNote={() => setShowVideoNote(true)}
+      onToggleAudio={toggleAudio}
+      onFocus={() => requestAnimationFrame(() => scrollChatToBottom(MESSAGE_LIST_ID))}
+    />
+  )
+
+  return (
+    <>
+      <ChatLayout header={header} footer={footer}>
+        <ChatContainer style={{ height: '100%', background: 'transparent' }}>
+          <MessageList id={MESSAGE_LIST_ID} className="chat-scroll-container" autoScrollToBottom autoScrollToBottomOnMount>
+            <MessageList.Content>
+              {loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="flex items-center justify-center py-20">
+                  <p className="text-slate-400 text-sm">No messages yet. Say hi!</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 px-4 py-3">{messages.map(renderMessage)}</div>
+              )}
+            </MessageList.Content>
+          </MessageList>
+        </ChatContainer>
+      </ChatLayout>
 
       <input
         ref={fileInputRef}
@@ -390,6 +482,6 @@ export default function ChatRoomPage() {
           onAdded={(updated) => setChat(updated)}
         />
       )}
-    </div>
+    </>
   )
 }

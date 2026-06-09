@@ -31,10 +31,14 @@ export const routerConfig = createBrowserRouter([
           { path: 'events/:eventId', Component: EventDetailPage },
           { path: 'chat', Component: ChatListPage },
           { path: 'chat/new', Component: NewChatPage },
-          { path: 'chat/:chatId', Component: ChatRoomPage },
           { path: 'contacts', Component: ContactsPage },
         ],
       },
+
+      // The conversation view is full-screen: it owns its own composer at the
+      // bottom, so it lives OUTSIDE the BottomNav layout (no tab bar, no bottom
+      // padding) — otherwise the fixed nav covers the message input.
+      { path: 'chat/:chatId', Component: ChatRoomPage },
 
       // Fallback — unknown paths go back to the map
       { path: '*', element: <Navigate to="/map" replace /> },

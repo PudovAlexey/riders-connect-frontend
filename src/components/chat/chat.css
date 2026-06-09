@@ -1,0 +1,33 @@
+/* Overrides for @chatscope/chat-ui-kit-react — we use only the MessageList as a
+   managed scroll container, so neutralize its default chrome and let our own
+   Tailwind bubbles show through. */
+
+.cs-chat-container {
+  width: 100%;
+  background: transparent !important;
+}
+
+.cs-message-list {
+  background: transparent !important;
+}
+
+/* Hide the scrollbar (Firefox / IE-Edge / WebKit). */
+.chat-scroll-container,
+.cs-message-list {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.chat-scroll-container::-webkit-scrollbar,
+.cs-message-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* PerfectScrollbar internals used by the MessageList. */
+.cs-message-list .scrollbar-container {
+  padding: 0 !important;
+}
+
+.cs-message-list .ps__rail-y {
+  opacity: 0 !important;
+}

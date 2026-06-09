@@ -9,6 +9,30 @@ api.interceptors.request.use((cfg) => {
   return cfg
 })
 
+// Optional callback invoked when the session is rejected (401), so the auth
+// layer can reset to a logged-out state instead of leaving stale `user` data
+// while every request fails. Registered by AuthProvider.
+let onUnauthorized: (() => void) | null = null
+export const setUnauthorizedHandler = (fn: (() => void) | null) => {
+  onUnauthorized = fn
+}
+
+// On 401 the stored token is invalid/expired — drop it and let the app fall
+// back to its public/logged-out state. We skip /auth/* so login errors (e.g. a
+// wrong code) stay local to the login sheet and don't trigger a global reset.
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    const status = error?.response?.status
+    const url: string = error?.config?.url ?? ''
+    if (status === 401 && !url.includes('/auth/')) {
+      localStorage.removeItem('token')
+      onUnauthorized?.()
+    }
+    return Promise.reject(error)
+  },
+)
+
 export const sendCode = (email: string) =>
   api.post('/auth/send-code', { email })
 

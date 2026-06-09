@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { getMe } from '../api'
+import { getMe, setUnauthorizedHandler } from '../api'
 import type { User } from '../types'
 
 interface AuthCtx {
@@ -32,6 +32,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => { localStorage.removeItem('token'); setToken(null) })
       .finally(() => setIsLoading(false))
   }, [token])
+
+  // Any 401 from the API (expired/invalid token mid-session) resets us to the
+  // logged-out state — the token is already cleared by the interceptor.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setToken(null)
+      setUser(null)
+    })
+    return () => setUnauthorizedHandler(null)
+  }, [])
 
   const login = (tok: string, u: User) => {
     localStorage.setItem('token', tok)
