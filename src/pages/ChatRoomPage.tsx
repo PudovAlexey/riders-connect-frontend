@@ -10,6 +10,7 @@ import { useRecorder } from '../hooks/useRecorder'
 import MessageContent from '../components/MessageContent'
 import VideoNoteRecorder from '../components/VideoNoteRecorder'
 import AppHeader from '../components/AppHeader'
+import AddMembersSheet from '../components/AddMembersSheet'
 
 type WsMsg = { type: string; message?: Message }
 
@@ -22,6 +23,7 @@ export default function ChatRoomPage() {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
   const [showMembers, setShowMembers] = useState(false)
+  const [showAddMembers, setShowAddMembers] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [showVideoNote, setShowVideoNote] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -360,8 +362,30 @@ export default function ChatRoomPage() {
                 </div>
               ))}
             </div>
+            {isGroup && (
+              <div className="px-4 py-3 border-t border-slate-100">
+                <button
+                  onClick={() => setShowAddMembers(true)}
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-white rounded-xl py-3 font-semibold text-sm active:opacity-80"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Add member
+                </button>
+              </div>
+            )}
           </div>
         </div>
+      )}
+
+      {chat && (
+        <AddMembersSheet
+          open={showAddMembers}
+          chat={chat}
+          onClose={() => setShowAddMembers(false)}
+          onAdded={(updated) => setChat(updated)}
+        />
       )}
     </div>
   )
