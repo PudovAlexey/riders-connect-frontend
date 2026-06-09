@@ -1,4 +1,5 @@
 import type { Chat, ChatMember, Message } from '../types'
+import { parsePointShare } from './mapShare'
 
 const MEDIA_LABELS: Record<string, string> = {
   image: '📷 Photo',
@@ -11,6 +12,8 @@ const MEDIA_LABELS: Record<string, string> = {
 // Short preview for a chat's last message (typed label for media).
 export function messagePreview(msg?: Message): string {
   if (!msg) return ''
+  const point = parsePointShare(msg.content)
+  if (point) return `📍 ${point.name}`
   if (msg.content) return msg.content
   return MEDIA_LABELS[msg.message_type || 'text'] || ''
 }

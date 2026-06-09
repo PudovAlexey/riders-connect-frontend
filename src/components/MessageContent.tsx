@@ -1,5 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Message } from '../types'
+import { parsePointShare } from '../lib/mapShare'
+import { categoryMeta, categorySvg } from '../lib/pointCategories'
 
 function fmtDuration(s?: number) {
   if (!s || s < 0) return ''
@@ -16,9 +19,47 @@ interface Props {
 /** Renders a chat message body based on its message_type. */
 export default function MessageContent({ msg, isMe }: Props) {
   const [unmuted, setUnmuted] = useState(false)
+  const navigate = useNavigate()
   const url = msg.attachment_url || ''
   const type = msg.message_type || 'text'
   const duration = msg.attachment_meta?.duration as number | undefined
+
+  // A shared map point arrives as a plain text message whose content is the
+  // point link — render it as a tappable location card.
+  const shared = type === 'text' ? parsePointShare(msg.content) : null
+  if (shared) {
+    return (
+      <button
+        type="button"
+        onClick={() => navigate(shared.to)}
+        className="block text-left w-[220px] max-w-full"
+      >
+        <div className="flex items-center gap-2.5">
+          <span
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white shrink-0"
+            style={{ background: categoryMeta(shared.category).color }}
+            dangerouslySetInnerHTML={{ __html: categorySvg(shared.category, 18) }}
+          />
+          <div className="min-w-0">
+            <p className={`font-semibold text-sm leading-tight truncate ${isMe ? 'text-white' : 'text-slate-900'}`}>
+              {shared.name}
+            </p>
+            {shared.address && (
+              <p className={`text-xs truncate ${isMe ? 'text-orange-100' : 'text-slate-500'}`}>{shared.address}</p>
+            )}
+          </div>
+        </div>
+        <div className={`mt-2 pt-2 border-t flex items-center gap-1 text-xs font-medium ${isMe ? 'border-white/25 text-white' : 'border-slate-200 text-primary'}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+            <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          Открыть на карте
+          <span className="ml-auto">→</span>
+        </div>
+      </button>
+    )
+  }
 
   const caption = msg.content ? (
     <p className={`leading-relaxed mt-1.5 ${isMe ? 'text-white' : 'text-slate-900'}`}>{msg.content}</p>
