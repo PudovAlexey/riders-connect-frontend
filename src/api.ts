@@ -81,6 +81,12 @@ export const createGroupChat = (data: { title: string; member_ids: string[] }) =
 export const addChatMember = (chatId: string, target: { user_id?: string; username?: string }) =>
   api.post<import('./types').Chat>(`/chat/chats/${chatId}/members`, target)
 
+export const updateChat = (chatId: string, data: { title?: string; avatar_url?: string }) =>
+  api.patch<import('./types').Chat>(`/chat/chats/${chatId}`, data)
+
+export const removeChatMember = (chatId: string, userId: string) =>
+  api.delete(`/chat/chats/${chatId}/members/${userId}`)
+
 export const getMessages = (chatId: string, limit = 50, offset = 0) =>
   api.get<import('./types').Message[]>(
     `/chat/chats/${chatId}/messages?limit=${limit}&offset=${offset}`,
@@ -122,11 +128,38 @@ export const deleteContact = (id: string) =>
 export const getGarage = () =>
   api.get<import('./types').Vehicle[]>('/garage/')
 
-export const addGarageVehicle = (data: Omit<import('./types').Vehicle, 'id' | 'created_at' | 'user_id'>) =>
+export const addGarageVehicle = (
+  data: Omit<import('./types').Vehicle, 'id' | 'created_at' | 'user_id' | 'service_items'>,
+) =>
   api.post<import('./types').Vehicle>('/garage/', data)
+
+export const updateGarageVehicle = (
+  id: string,
+  data: Partial<Pick<import('./types').Vehicle, 'make' | 'model' | 'year' | 'color' | 'notes' | 'photos' | 'mileage'>>,
+) =>
+  api.patch<import('./types').Vehicle>(`/garage/${id}`, data)
 
 export const deleteGarageVehicle = (id: string) =>
   api.delete(`/garage/${id}`)
+
+export const addServiceItem = (
+  vehicleId: string,
+  data: { kind: string; title?: string; interval_km: number },
+) =>
+  api.post<import('./types').ServiceItem>(`/garage/${vehicleId}/service`, data)
+
+export const updateServiceItem = (
+  vehicleId: string,
+  itemId: string,
+  data: { title?: string; interval_km: number },
+) =>
+  api.patch<import('./types').ServiceItem>(`/garage/${vehicleId}/service/${itemId}`, data)
+
+export const resetServiceItem = (vehicleId: string, itemId: string) =>
+  api.post<import('./types').ServiceItem>(`/garage/${vehicleId}/service/${itemId}/reset`)
+
+export const deleteServiceItem = (vehicleId: string, itemId: string) =>
+  api.delete(`/garage/${vehicleId}/service/${itemId}`)
 
 type EventScope = 'feed' | 'mine' | 'invitations'
 

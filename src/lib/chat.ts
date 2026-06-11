@@ -55,3 +55,13 @@ export function senderName(chat: Chat, senderId: string): string {
 export function senderAvatar(chat: Chat, senderId: string): string {
   return chat.members.find((m) => m.user_id === senderId)?.avatar_url ?? ''
 }
+
+// A message I sent counts as "read" once ANY other member's read cursor has
+// reached it. Used to pick single (✓) vs double (✓✓) ticks on my own bubbles.
+export function isMessageRead(chat: Chat | null | undefined, msg: Message, meId?: string): boolean {
+  if (!chat) return false
+  const t = new Date(msg.created_at).getTime()
+  return chat.members.some(
+    (m) => m.user_id !== meId && m.last_read_at != null && new Date(m.last_read_at).getTime() >= t,
+  )
+}

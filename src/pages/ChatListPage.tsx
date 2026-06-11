@@ -1,24 +1,66 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import useWebSocket from 'react-use-websocket'
 import { getChats } from '../api'
 import { useAuth } from '../hooks/useAuth'
-import type { Chat } from '../types'
-import { chatTitle, chatSubtitle, chatAvatarUrl, initial, messagePreview } from '../lib/chat'
+import type { Chat, Message } from '../types'
+import { chatTitle, chatSubtitle, chatAvatarUrl, initial, messagePreview, isMessageRead } from '../lib/chat'
+import { buildWsUrl } from '../lib/config'
 import AppHeader from '../components/AppHeader'
+import ReadTicks from '../components/ReadTicks'
+
+type WsMsg = { type: string; message?: Message; chat_id?: string; user_id?: string }
 
 export default function ChatListPage() {
-  const { user, promptLogin } = useAuth()
+  const { user, token, promptLogin } = useAuth()
   const navigate = useNavigate()
   const [chats, setChats] = useState<Chat[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
 
-  useEffect(() => {
-    if (!user) return
+  const refresh = useCallback(() => {
     getChats()
       .then((r) => setChats(r.data))
       .finally(() => setLoading(false))
-  }, [user])
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    refresh()
+  }, [user, refresh])
+
+  // Live unread updates over the shared socket: bump on incoming messages,
+  // reset when I read a chat (e.g. from another tab).
+  const wsUrl = token ? buildWsUrl(`/ws?token=${token}`) : null
+  const { lastJsonMessage } = useWebSocket<WsMsg>(wsUrl, { shouldReconnect: () => true, share: true })
+
+  useEffect(() => {
+    if (!lastJsonMessage || !user) return
+
+    if (lastJsonMessage.type === 'new_message' && lastJsonMessage.message) {
+      const m = lastJsonMessage.message
+      setChats((prev) => {
+        const i = prev.findIndex((c) => c.id === m.chat_id)
+        if (i === -1) {
+          refresh() // a chat not yet in the list (e.g. brand new) — refetch
+          return prev
+        }
+        const mine = m.sender_id === user.id
+        const updated: Chat = {
+          ...prev[i],
+          last_message: m,
+          unread_count: (prev[i].unread_count ?? 0) + (mine ? 0 : 1),
+        }
+        return [updated, ...prev.filter((c) => c.id !== m.chat_id)] // jump to top
+      })
+      return
+    }
+
+    if (lastJsonMessage.type === 'read_receipt' && lastJsonMessage.user_id === user.id) {
+      const cid = lastJsonMessage.chat_id
+      setChats((prev) => prev.map((c) => (c.id === cid ? { ...c, unread_count: 0 } : c)))
+    }
+  }, [lastJsonMessage, user, refresh])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -112,6 +154,9 @@ export default function ChatListPage() {
           filtered.map((c) => {
             const title = chatTitle(c, user.id)
             const avatar = chatAvatarUrl(c, user.id)
+            const lastMine = c.last_message?.sender_id === user.id
+            const lastRead = lastMine && isMessageRead(c, c.last_message!, user.id)
+            const unread = c.unread_count ?? 0
             return (
               <button
                 key={c.id}
@@ -131,16 +176,29 @@ export default function ChatListPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-slate-900 text-sm truncate">{title}</p>
+                    <p className={`text-slate-900 text-sm truncate ${unread > 0 ? 'font-semibold' : 'font-medium'}`}>{title}</p>
                     {c.last_message && (
-                      <span className="text-[10px] text-slate-400 flex-shrink-0">
+                      <span className="flex items-center gap-1 flex-shrink-0 text-[10px] text-slate-400">
+                        {lastMine && (
+                          <ReadTicks
+                            read={!!lastRead}
+                            className={`w-3.5 h-3 ${lastRead ? 'text-sky-500' : 'text-slate-400'}`}
+                          />
+                        )}
                         {new Date(c.last_message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
                   </div>
-                  <p className="text-slate-400 text-xs mt-0.5 truncate">
-                    {messagePreview(c.last_message) || chatSubtitle(c, user.id) || 'No messages yet'}
-                  </p>
+                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                    <p className={`text-xs truncate ${unread > 0 ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
+                      {messagePreview(c.last_message) || chatSubtitle(c, user.id) || 'No messages yet'}
+                    </p>
+                    {unread > 0 && (
+                      <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-[11px] font-semibold flex items-center justify-center">
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </button>
             )

@@ -6,6 +6,10 @@ import PhotoPicker from '../components/PhotoPicker'
 import type { Vehicle } from '../types'
 import AppHeader from '../components/AppHeader'
 import BottomSheet from '../components/BottomSheet'
+import MaintenanceSheet from '../components/MaintenanceSheet'
+import { serviceLabel } from '../lib/serviceCatalog'
+
+const km = (n: number) => n.toLocaleString('en-US')
 
 function MotoIcon({ size = 64, className = '' }: { size?: number; className?: string }) {
   return (
@@ -47,15 +51,18 @@ function MotoIcon({ size = 64, className = '' }: { size?: number; className?: st
   )
 }
 
-const EMPTY_FORM = { make: '', model: '', year: '', color: '', notes: '', photos: [] as string[] }
+const EMPTY_FORM = { make: '', model: '', year: '', mileage: '', color: '', notes: '', photos: [] as string[] }
 
 export default function GaragePage() {
   const navigate = useNavigate()
   const { token, promptLogin } = useAuth()
-  const { vehicles, loading, addVehicle, deleteVehicle } = useGarage()
+  const { vehicles, loading, addVehicle, updateMileage, deleteVehicle, refresh } = useGarage()
 
   const [activeIdx, setActiveIdx] = useState(0)
   const [showForm, setShowForm] = useState(false)
+  const [editMileageId, setEditMileageId] = useState<string | null>(null)
+  const [mileageDraft, setMileageDraft] = useState('')
+  const [maintenanceVehicleId, setMaintenanceVehicleId] = useState<string | null>(null)
 
   // Browsing the garage is public, but creating a vehicle requires login
   const openForm = () => {
@@ -84,6 +91,7 @@ export default function GaragePage() {
       make: form.make.trim(),
       model: form.model.trim(),
       year: Number(form.year),
+      mileage: Number(form.mileage) || 0,
       color: form.color.trim(),
       notes: form.notes.trim(),
       photos: form.photos,
@@ -105,6 +113,18 @@ export default function GaragePage() {
   }
 
   const closeForm = () => { setShowForm(false); setForm(EMPTY_FORM) }
+
+  const startEditMileage = (v: Vehicle) => {
+    setEditMileageId(v.id)
+    setMileageDraft(String(v.mileage ?? 0))
+  }
+  const saveMileage = async (id: string) => {
+    const next = Math.max(0, Number(mileageDraft) || 0)
+    setEditMileageId(null)
+    await updateMileage(id, next)
+  }
+
+  const maintenanceVehicle = vehicles.find((v) => v.id === maintenanceVehicleId)
 
   const field = (key: keyof typeof form, label: string, opts?: { type?: string; placeholder?: string; required?: boolean }) => (
     <div>
@@ -203,6 +223,84 @@ export default function GaragePage() {
                       )}
                     </div>
 
+                    {/* Mileage + maintenance */}
+                    <div className="w-full px-6">
+                      {editMileageId === v.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            autoFocus
+                            value={mileageDraft}
+                            onChange={(e) => setMileageDraft(e.target.value)}
+                            className="flex-1 min-w-0 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                          <button
+                            onClick={() => saveMileage(v.id)}
+                            className="bg-primary text-white rounded-lg px-3 py-2 text-xs font-semibold active:opacity-80"
+                          >
+                            Save
+                          </button>
+                          <button onClick={() => setEditMileageId(null)} className="text-slate-400 text-xs px-1">
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startEditMileage(v)}
+                          className="flex items-center justify-center gap-1.5 w-full text-slate-500 text-sm active:text-primary"
+                        >
+                          <span className="font-semibold text-slate-900">{km(v.mileage ?? 0)} km</span>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 text-slate-400">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {/* Most urgent tracked item */}
+                      {(() => {
+                        const items = v.service_items ?? []
+                        if (items.length === 0) return null
+                        const urgent = [...items].sort((a, b) => a.remaining_km - b.remaining_km)[0]
+                        const pct =
+                          urgent.interval_km > 0
+                            ? Math.max(0, Math.min(1, urgent.remaining_km / urgent.interval_km))
+                            : 0
+                        const color =
+                          urgent.status === 'overdue'
+                            ? 'bg-red-500'
+                            : urgent.status === 'soon'
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                        return (
+                          <div className="mt-3 text-left">
+                            <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+                              <span className="truncate">{serviceLabel(urgent)}</span>
+                              <span className="flex-shrink-0 ml-2">
+                                {urgent.remaining_km >= 0
+                                  ? `${km(urgent.remaining_km)} km`
+                                  : `${km(-urgent.remaining_km)} km over`}
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                              <div className={`h-full rounded-full ${color}`} style={{ width: `${pct * 100}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })()}
+
+                      <button
+                        onClick={() => setMaintenanceVehicleId(v.id)}
+                        className="mt-3 w-full border border-slate-200 text-slate-700 rounded-xl py-2.5 text-sm font-semibold active:bg-slate-50 flex items-center justify-center gap-2"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                          <path d="M14.7 6.3a4 4 0 00-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 005.4-5.4l-2.6 2.6-2.1-.4-.4-2.1 2.6-2.6z" />
+                        </svg>
+                        Maintenance{(v.service_items?.length ?? 0) > 0 ? ` (${v.service_items.length})` : ''}
+                      </button>
+                    </div>
+
                     {confirmDelete === v.id ? (
                       <div className="flex gap-2 w-full px-6 pb-8">
                         <button
@@ -270,6 +368,7 @@ export default function GaragePage() {
           {field('make', 'Make', { placeholder: 'Honda', required: true })}
           {field('model', 'Model', { placeholder: 'CB650R', required: true })}
           {field('year', 'Year', { type: 'number', placeholder: '2022', required: true })}
+          {field('mileage', 'Mileage (km)', { type: 'number', placeholder: '12000', required: false })}
           {field('color', 'Color', { placeholder: 'Red', required: false })}
           {field('notes', 'Notes', { placeholder: 'Optional notes…', required: false })}
           <div className="flex gap-2 pt-2">
@@ -290,6 +389,16 @@ export default function GaragePage() {
           </div>
         </form>
       </BottomSheet>
+
+      {/* Per-vehicle maintenance manager */}
+      {maintenanceVehicle && (
+        <MaintenanceSheet
+          open={!!maintenanceVehicleId}
+          vehicle={maintenanceVehicle}
+          onClose={() => setMaintenanceVehicleId(null)}
+          onChanged={refresh}
+        />
+      )}
     </div>
   )
 }

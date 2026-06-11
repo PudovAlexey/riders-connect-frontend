@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useViewportHeight } from '../../hooks/useViewportHeight'
+import { useVisualViewport } from '../../hooks/useViewportHeight'
 
 interface ChatLayoutProps {
   /** Top bar — first grid row, height by content. */
@@ -13,27 +13,34 @@ interface ChatLayoutProps {
 /**
  * Chat screen layout: header / messages / footer via CSS Grid.
  *
- * The root height tracks the visual viewport (keyboard-safe on iOS) and falls
- * back to `100dvh` (keyboard-safe on Android via
- * `interactive-widget=resizes-content`). The footer adds
+ * The root is `position: fixed` and pinned to the *visual* viewport: its height
+ * tracks `visualViewport.height` (so it shrinks under the iOS keyboard) and a
+ * `translateY(offsetTop)` cancels the layout-viewport scroll iOS applies to
+ * lift the focused input — without it the whole layout drifts off-screen.
+ * Falls back to `100dvh` when `visualViewport` is unavailable (keyboard-safe on
+ * Android via `interactive-widget=resizes-content`). The footer adds
  * `env(safe-area-inset-bottom)` so the input clears the iOS home indicator.
  *
  * The message row gets `1fr` + `minHeight: 0` so the chatscope `<MessageList>`
  * inside it can take all available space and own its scroll.
  */
 export default function ChatLayout({ header, children, footer }: ChatLayoutProps) {
-  const vh = useViewportHeight()
+  const vv = useVisualViewport()
 
-  const height = vh ? `${vh}px` : '100dvh'
+  const height = vv ? `${vv.height}px` : '100dvh'
 
   return (
     <div
       style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
         display: 'flex',
         justifyContent: 'center',
         height,
         maxHeight: height,
-        width: '100%',
+        transform: vv ? `translateY(${vv.offsetTop}px)` : undefined,
         background: 'rgb(var(--c-bg))',
         overflow: 'hidden',
       }}

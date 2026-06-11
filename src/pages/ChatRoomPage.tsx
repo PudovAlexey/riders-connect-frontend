@@ -1,50 +1,40 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import useWebSocket, { ReadyState } from 'react-use-websocket'
+import { AnimatePresence } from 'motion/react'
 import { ChatContainer, MessageList } from '@chatscope/chat-ui-kit-react'
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css'
-import { getMessages, getChats, uploadMedia, sendMessage as sendMessageRest, editMessage, deleteMessage } from '../api'
+import { getMessages, getChats, uploadMedia, sendMessage as sendMessageRest, editMessage } from '../api'
 import { useAuth } from '../hooks/useAuth'
 import type { Message, Chat } from '../types'
-import { chatTitle, chatSubtitle, chatAvatarUrl, initial, senderName, senderAvatar } from '../lib/chat'
+import { chatTitle, chatSubtitle, chatAvatarUrl, initial, senderName, senderAvatar, isMessageRead } from '../lib/chat'
 import { buildWsUrl } from '../lib/config'
 import { playSend } from '../lib/sounds'
 import { useRecorder } from '../hooks/useRecorder'
-import { useLongPress } from '../hooks/useLongPress'
 import MessageContent from '../components/MessageContent'
-import MessageActionsSheet from '../components/MessageActionsSheet'
-import BottomSheet from '../components/BottomSheet'
+import ReadTicks from '../components/ReadTicks'
 import VideoNoteRecorder from '../components/VideoNoteRecorder'
 import AppHeader from '../components/AppHeader'
 import AddMembersSheet from '../components/AddMembersSheet'
+import ChatSettingsDrawer from '../components/chat/ChatSettingsDrawer'
 import ChatLayout from '../components/chat/ChatLayout'
 import ChatInputBar from '../components/chat/ChatInputBar'
 import { scrollChatToBottom } from '../components/chat/scroll'
 import '../components/chat/chat.css'
 
-type WsMsg = { type: string; message?: Message; message_id?: string; chat_id?: string }
+type WsMsg = {
+  type: string
+  message?: Message
+  message_id?: string
+  chat_id?: string
+  user_id?: string
+  last_read_at?: string
+  chat?: Chat
+}
 type SendState = 'loading' | 'failed'
 
 const MESSAGE_LIST_ID = 'chat-msg-list'
 const SEND_TIMEOUT_MS = 8000
-
-/** Wraps a message row so a long-press (or right-click) opens its action menu. */
-function LongPressable({
-  onLongPress,
-  className,
-  children,
-}: {
-  onLongPress: () => void
-  className?: string
-  children: React.ReactNode
-}) {
-  const handlers = useLongPress(onLongPress)
-  return (
-    <div className={className} style={{ WebkitTouchCallout: 'none' }} {...handlers}>
-      {children}
-    </div>
-  )
-}
 
 export default function ChatRoomPage() {
   const { chatId } = useParams<{ chatId: string }>()
@@ -54,12 +44,11 @@ export default function ChatRoomPage() {
   const [chat, setChat] = useState<Chat | null>(null)
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
-  const [showMembers, setShowMembers] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [showAddMembers, setShowAddMembers] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [showVideoNote, setShowVideoNote] = useState(false)
   const [sendStates, setSendStates] = useState<Record<string, SendState>>({})
-  const [menuMsg, setMenuMsg] = useState<Message | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -87,6 +76,17 @@ export default function ChatRoomPage() {
     share: true,
   })
 
+  // Tell the server we've read this chat (only while the tab is actually
+  // visible). The server advances our read cursor to the newest message and
+  // broadcasts a read_receipt to the other members.
+  const markRead = useCallback(() => {
+    if (!chatId) return
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+    if (readyState === ReadyState.OPEN) {
+      sendJsonMessage({ type: 'read', chat_id: chatId })
+    }
+  }, [chatId, readyState, sendJsonMessage])
+
   // Load history + chat metadata
   useEffect(() => {
     if (!chatId) return
@@ -110,6 +110,37 @@ export default function ChatRoomPage() {
   // Real-time incoming
   useEffect(() => {
     if (!lastJsonMessage) return
+
+    // Another member read up to last_read_at — advance their cursor so our own
+    // bubbles can flip to "read" (double tick).
+    if (lastJsonMessage.type === 'read_receipt') {
+      const { chat_id, user_id, last_read_at } = lastJsonMessage
+      if (chat_id !== chatId || !user_id || !last_read_at) return
+      setChat((prev) =>
+        prev
+          ? {
+              ...prev,
+              members: prev.members.map((m) =>
+                m.user_id === user_id ? { ...m, last_read_at } : m,
+              ),
+            }
+          : prev,
+      )
+      return
+    }
+
+    // Group settings changed (name/avatar/members) — refresh our copy.
+    if (lastJsonMessage.type === 'chat_updated' && lastJsonMessage.chat) {
+      if (lastJsonMessage.chat.id !== chatId) return
+      setChat(lastJsonMessage.chat)
+      return
+    }
+
+    // We were removed from (or left) this chat — leave the screen.
+    if (lastJsonMessage.type === 'chat_removed') {
+      if (lastJsonMessage.chat_id === chatId) navigate('/chat')
+      return
+    }
 
     if (lastJsonMessage.type === 'message_edited' && lastJsonMessage.message) {
       const edited = lastJsonMessage.message
@@ -149,13 +180,25 @@ export default function ChatRoomPage() {
     }
 
     setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
-  }, [lastJsonMessage, chatId, user?.id, clearSendTimeout])
+    // An incoming message arriving while we're looking at the chat is read.
+    if (msg.sender_id !== user?.id) markRead()
+  }, [lastJsonMessage, chatId, user?.id, clearSendTimeout, markRead, navigate])
 
   // Stick to the bottom once the history finishes loading.
   useEffect(() => {
     if (loading) return
     requestAnimationFrame(() => scrollChatToBottom(MESSAGE_LIST_ID))
   }, [loading])
+
+  // Mark the chat read once history is loaded and the socket is up, and again
+  // whenever the tab returns to the foreground.
+  useEffect(() => {
+    if (loading) return
+    markRead()
+    const onVisible = () => markRead()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loading, readyState, chatId, markRead])
 
   // ─── Sending ───
 
@@ -206,11 +249,6 @@ export default function ChatRoomPage() {
       .catch(() => { /* server rejects (e.g. not author) — leave message as is */ })
   }, [text, chatId, editingId])
 
-  const cancelEdit = useCallback(() => {
-    setEditingId(null)
-    setText('')
-  }, [])
-
   const send = useCallback(() => {
     if (editingId) {
       confirmEdit()
@@ -237,29 +275,6 @@ export default function ChatRoomPage() {
 
     dispatchSend(optimisticId, content)
   }, [text, chatId, user, dispatchSend, editingId, confirmEdit])
-
-  // ─── Message actions (long-press menu) ───
-
-  const startEdit = useCallback((msg: Message) => {
-    setMenuMsg(null)
-    setEditingId(msg.id)
-    setText(msg.content)
-  }, [])
-
-  const removeLocally = useCallback((id: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== id))
-  }, [])
-
-  const handleDelete = useCallback(
-    (msg: Message, scope: 'me' | 'all') => {
-      setMenuMsg(null)
-      if (!chatId) return
-      if (editingId === msg.id) cancelEdit()
-      removeLocally(msg.id)
-      deleteMessage(chatId, msg.id, scope).catch(() => { /* best-effort */ })
-    },
-    [chatId, editingId, cancelEdit, removeLocally],
-  )
 
   const handleRetry = useCallback(
     (id: string) => {
@@ -357,6 +372,11 @@ export default function ChatRoomPage() {
     const isMedia = type !== 'text'
     const state = msg.id ? sendStates[msg.id] : undefined
 
+    // Read ticks on my own confirmed (non-optimistic, non-failed) messages.
+    const isOptimistic = msg.id.startsWith('optimistic-')
+    const showTicks = mine && !isOptimistic && !state
+    const read = showTicks && isMessageRead(chat, msg, user?.id)
+
     // Telegram-style runs: avatar (bottom-left) on the last message of a run,
     // sender name (top) on the first — only for incoming group messages.
     const showAvatarColumn = isGroup && !mine && !!chat
@@ -395,8 +415,11 @@ export default function ChatRoomPage() {
             )}
             <MessageContent msg={msg} isMe={mine} />
             {!isNote && (
-              <p className={`text-[10px] mt-1 ${isMedia ? 'px-3 pb-1.5' : ''} ${mine ? 'text-orange-100' : 'text-slate-400'}`}>
+              <p className={`text-[10px] mt-1 flex items-center gap-1 ${mine ? 'justify-end' : ''} ${isMedia ? 'px-3 pb-1.5' : ''} ${mine ? 'text-orange-100' : 'text-slate-400'}`}>
                 {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {showTicks && (
+                  <ReadTicks read={read} className={`w-3.5 h-3 ${read ? 'text-sky-200' : 'text-orange-100'}`} />
+                )}
               </p>
             )}
           </div>
@@ -414,7 +437,7 @@ export default function ChatRoomPage() {
       onBack={() => navigate('/chat')}
       title={
         <button
-          onClick={() => chat && setShowMembers(true)}
+          onClick={() => chat && setShowSettings(true)}
           disabled={!chat}
           className="flex items-center gap-3 min-w-0 w-full text-left active:opacity-70 transition-opacity"
         >
@@ -515,65 +538,21 @@ export default function ChatRoomPage() {
         />
       )}
 
-      {/* Participants panel */}
-      <BottomSheet open={showMembers && !!chat} onClose={() => setShowMembers(false)}>
-        {chat && (
-          <>
-            <div className="flex items-center justify-between px-4 pt-1 pb-3 border-b border-slate-100">
-              <div>
-                <p className="font-semibold text-slate-900">Participants</p>
-                <p className="text-xs text-slate-400">{chat.members.length} {chat.members.length === 1 ? 'member' : 'members'}</p>
-              </div>
-              <button
-                onClick={() => setShowMembers(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div>
-              {chat.members.map((m) => (
-                <div key={m.user_id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {m.avatar_url ? (
-                      <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-indigo-500 font-semibold">{initial(m.name || m.username)}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-900 text-sm truncate">
-                      {m.name || `@${m.username}`}
-                      {m.user_id === user?.id && <span className="text-slate-400 font-normal"> (You)</span>}
-                    </p>
-                    {m.username && <p className="text-slate-400 text-xs truncate">@{m.username}</p>}
-                  </div>
-                  {m.role === 'owner' && (
-                    <span className="text-[11px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                      owner
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-            {isGroup && (
-              <div className="px-4 py-3">
-                <button
-                  onClick={() => setShowAddMembers(true)}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-white rounded-xl py-3 font-semibold text-sm active:opacity-80"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Add member
-                </button>
-              </div>
-            )}
-          </>
+      {/* Full-screen chat settings drawer */}
+      <AnimatePresence>
+        {showSettings && chat && (
+          <ChatSettingsDrawer
+            key="chat-settings"
+            chat={chat}
+            messages={messages}
+            currentUserId={user?.id}
+            onClose={() => setShowSettings(false)}
+            onChatUpdated={setChat}
+            onAddMembers={() => setShowAddMembers(true)}
+            onLeft={() => navigate('/chat')}
+          />
         )}
-      </BottomSheet>
+      </AnimatePresence>
 
       {chat && (
         <AddMembersSheet

@@ -42,6 +42,8 @@ export interface ChatMember {
   username: string
   avatar_url: string
   role: string
+  /** This member has read every message up to this timestamp (null = none yet). */
+  last_read_at?: string | null
 }
 
 export interface Chat {
@@ -53,6 +55,8 @@ export interface Chat {
   created_at: string
   members: ChatMember[]
   last_message?: Message
+  /** Messages from others newer than my read cursor. */
+  unread_count?: number
 }
 
 export interface Contact {
@@ -85,6 +89,22 @@ export interface UploadResponse {
   message_type: string
 }
 
+export type ServiceStatus = 'ok' | 'soon' | 'overdue' | 'untracked'
+
+export interface ServiceItem {
+  id: string
+  vehicle_id: string
+  kind: string
+  title: string
+  interval_km: number
+  last_service_mileage: number
+  last_service_at: string | null
+  times_done: number
+  // Computed on the server, recalculated on every read:
+  remaining_km: number
+  status: ServiceStatus
+}
+
 export interface Vehicle {
   id: string
   user_id?: string
@@ -94,6 +114,8 @@ export interface Vehicle {
   color: string
   notes: string
   photos: string[]
+  mileage: number
+  service_items: ServiceItem[]
   created_at: string
 }
 
