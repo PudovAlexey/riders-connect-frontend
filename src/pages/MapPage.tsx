@@ -13,7 +13,9 @@ import { buildWsUrl } from '../lib/config'
 import { POINT_CATEGORIES, categoryMeta, categorySvg, createCategoryIcon } from '../lib/pointCategories'
 import { getRoute, hasRoutingKey, formatDistance, formatDuration, type RouteResult } from '../lib/routing'
 import { buildPointUrl } from '../lib/mapShare'
+import { yandexRouteUrl, dgisRouteUrl, googleRouteUrl } from '../lib/externalMaps'
 import { chatTitle, chatAvatarUrl, initial } from '../lib/chat'
+import PointReviews from '../components/PointReviews'
 import RoutePlanner from '../components/RoutePlanner'
 import { type Endpoint, type PlaceItem, type EndpointTarget, endpointLabel } from '../lib/routePlanner'
 
@@ -117,7 +119,7 @@ function ViewportPoints({ param, setPoints }: { param: CategoryParam; setPoints:
 }
 
 export default function MapPage() {
-  const { user, token } = useAuth()
+  const { user, token, promptLogin, authOpen } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
   const [locations, setLocations] = useState<UserLocation[]>([])
@@ -134,6 +136,9 @@ export default function MapPage() {
   const [showRiders, setShowRiders] = useState(true)
   const [filterOpen, setFilterOpen] = useState(false)
   const [activePoint, setActivePoint] = useState<Point | null>(null)
+  // When a logged-out user starts a review, we close the point card so the auth
+  // sheet isn't stuck behind it, and remember the point to reopen after login.
+  const reopenAfterAuth = useRef<Point | null>(null)
 
   // Routing (ORS): a computed route from my location to a tapped point.
   const [route, setRoute] = useState<(RouteResult & { name: string }) | null>(null)
@@ -258,6 +263,26 @@ export default function MapPage() {
       setSearchParams({}, { replace: true })
     }
   }, [points, setSearchParams])
+
+  // A logged-out user tapped "Оставить отзыв": close the card first (otherwise
+  // the auth sheet opens behind it), open login, and stash the point to reopen.
+  const requireAuthForReview = () => {
+    reopenAfterAuth.current = activePoint
+    setActivePoint(null)
+    promptLogin()
+  }
+
+  // Once the login sheet resolves: reopen the card on success, or drop the
+  // pending point if the user dismissed login without signing in.
+  useEffect(() => {
+    if (!reopenAfterAuth.current) return
+    if (user) {
+      setActivePoint(reopenAfterAuth.current)
+      reopenAfterAuth.current = null
+    } else if (!authOpen) {
+      reopenAfterAuth.current = null
+    }
+  }, [user, authOpen])
 
   const startChat = async (userId: string) => {
     try {
@@ -674,6 +699,28 @@ export default function MapPage() {
             </button>
             {routeError && <p className="text-xs text-red-500 mb-3 -mt-1">{routeError}</p>}
 
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {[
+                { label: 'Яндекс', href: yandexRouteUrl(activePoint.lat, activePoint.lon) },
+                { label: '2ГИС', href: dgisRouteUrl(activePoint.lat, activePoint.lon) },
+                { label: 'Google', href: googleRouteUrl(activePoint.lat, activePoint.lon) },
+              ].map((m) => (
+                <a
+                  key={m.label}
+                  href={m.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-1.5 bg-slate-100 text-slate-700 rounded-xl py-2.5 font-medium text-sm active:bg-slate-200"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  {m.label}
+                </a>
+              ))}
+            </div>
+
             <div className="grid grid-cols-2 gap-2 mb-3">
               <button
                 onClick={() => sharePoint(activePoint)}
@@ -738,6 +785,14 @@ export default function MapPage() {
                 ))}
               </div>
             )}
+
+            <PointReviews
+              pointId={activePoint.id}
+              fallbackAvg={activePoint.avg_rating}
+              fallbackCount={activePoint.review_count}
+              onToast={showToast}
+              onRequireAuth={requireAuthForReview}
+            />
           </div>
         )}
       </BottomSheet>

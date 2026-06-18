@@ -69,6 +69,19 @@ export const getPoints = (
   return api.get<import('./types').Point[]>(url)
 }
 
+export const getPointReviews = (pointId: string) =>
+  api.get<import('./types').PointReview[]>(`/points/${pointId}/reviews`)
+
+// Create or overwrite the current user's review of a point (one per user).
+export const savePointReview = (
+  pointId: string,
+  data: { rating: number; text: string; photos: string[] },
+) =>
+  api.post<import('./types').PointReview>(`/points/${pointId}/reviews`, data)
+
+export const deletePointReview = (pointId: string) =>
+  api.delete(`/points/${pointId}/reviews`)
+
 export const getChats = () =>
   api.get<import('./types').Chat[]>('/chat/chats')
 

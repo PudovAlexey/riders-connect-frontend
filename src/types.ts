@@ -30,8 +30,26 @@ export interface Point {
   website: string
   hours: string
   photos: string[]
+  /** Aggregates over point reviews, computed server-side. 0 / 0 when no reviews. */
+  avg_rating: number
+  review_count: number
   created_at: string
   updated_at: string
+}
+
+export interface PointReview {
+  id: string
+  point_id: string
+  user_id: string
+  rating: number
+  text: string
+  photos: string[]
+  created_at: string
+  updated_at: string
+  // Author profile, joined server-side.
+  name: string
+  username: string
+  avatar_url: string
 }
 
 export type ChatType = 'direct' | 'group'
