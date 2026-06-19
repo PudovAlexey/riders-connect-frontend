@@ -59,7 +59,7 @@ export default function NewChatPage() {
       const res = await createDirectChat({ user_id: p.id })
       navigate(`/chat/${res.data.id}`)
     } catch {
-      setError('Could not start chat')
+      setError('Не удалось начать чат')
       setBusy(false)
     }
   }
@@ -78,14 +78,14 @@ export default function NewChatPage() {
       const res = await createGroupChat({ title: title.trim(), member_ids: selected.map((p) => p.id) })
       navigate(`/chat/${res.data.id}`)
     } catch {
-      setError('Could not create group')
+      setError('Не удалось создать группу')
       setBusy(false)
     }
   }
 
   return (
     <div className="flex flex-col h-screen bg-surface">
-      <AppHeader border onBack={() => navigate('/chat')} title={`New ${mode === 'group' ? 'group' : 'chat'}`} />
+      <AppHeader border onBack={() => navigate('/chat')} title={mode === 'group' ? 'Новая группа' : 'Новый чат'} />
 
       {/* Mode tabs */}
       <div className="flex px-4 pt-3 gap-2">
@@ -97,7 +97,7 @@ export default function NewChatPage() {
               mode === m ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'
             }`}
           >
-            {m === 'direct' ? 'Direct' : 'Group'}
+            {m === 'direct' ? 'Личный' : 'Группа'}
           </button>
         ))}
       </div>
@@ -107,7 +107,7 @@ export default function NewChatPage() {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Group name"
+            placeholder="Название группы"
             className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
           {selected.length > 0 && (
@@ -129,7 +129,7 @@ export default function NewChatPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by login or name..."
+            placeholder="Поиск по логину или имени…"
             className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
           />
         </div>
@@ -140,11 +140,11 @@ export default function NewChatPage() {
       {/* People list */}
       <div className="flex-1 overflow-y-auto">
         {!query.trim() && (
-          <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Contacts</p>
+          <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Контакты</p>
         )}
         {people.length === 0 ? (
           <p className="px-4 py-6 text-sm text-slate-400 text-center">
-            {query.trim() ? 'No users found' : 'No contacts yet — search by @login above'}
+            {query.trim() ? 'Никого не найдено' : 'Пока нет контактов — найдите по @логину выше'}
           </p>
         ) : (
           people.map((p) => {
@@ -194,7 +194,7 @@ export default function NewChatPage() {
             disabled={busy || !title.trim() || selected.length < 1}
             className="w-full bg-primary text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-40"
           >
-            Create group ({selected.length})
+            Создать группу ({selected.length})
           </button>
         </div>
       )}

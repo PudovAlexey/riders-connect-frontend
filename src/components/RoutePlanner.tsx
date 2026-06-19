@@ -66,7 +66,7 @@ export default function RoutePlanner({
             <button
               onClick={() => { setListFor(null); setQuery('') }}
               className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 active:bg-slate-100 flex-shrink-0"
-              aria-label="Back"
+              aria-label="Назад"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M15 18l-6-6 6-6" /></svg>
             </button>

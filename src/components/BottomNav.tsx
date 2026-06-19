@@ -12,7 +12,7 @@ interface Tab {
 const tabs: Tab[] = [
   {
     to: '/map',
-    label: 'Map',
+    label: 'Карта',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-7 h-7">
         <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" />
@@ -26,7 +26,7 @@ const tabs: Tab[] = [
   },
   {
     to: '/chat',
-    label: 'Chat',
+    label: 'Чаты',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-7 h-7">
         <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -40,7 +40,7 @@ const tabs: Tab[] = [
   },
   {
     to: '/events',
-    label: 'Events',
+    label: 'Эвенты',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-7 h-7">
         <rect x="3" y="4" width="18" height="17" rx="2" />
@@ -54,8 +54,26 @@ const tabs: Tab[] = [
     ),
   },
   {
+    to: '/routes',
+    label: 'Маршруты',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+        <circle cx="6" cy="19" r="3" />
+        <circle cx="18" cy="5" r="3" />
+        <path d="M9 19h5.5a3.5 3.5 0 0 0 0-7h-4a3.5 3.5 0 0 1 0-7H15" />
+      </svg>
+    ),
+    activeIcon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+        <circle cx="6" cy="19" r="3" fill="currentColor" />
+        <circle cx="18" cy="5" r="3" fill="currentColor" />
+        <path d="M9 19h5.5a3.5 3.5 0 0 0 0-7h-4a3.5 3.5 0 0 1 0-7H15" />
+      </svg>
+    ),
+  },
+  {
     to: '/profile',
-    label: 'Profile',
+    label: 'Профиль',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-7 h-7">
         <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

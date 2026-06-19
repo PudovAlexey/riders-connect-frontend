@@ -119,7 +119,7 @@ export default function PhotoPicker({ photos, onChange, max = 5 }: PhotoPickerPr
 
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-500 mb-2">Photos (up to {max})</label>
+      <label className="block text-xs font-medium text-slate-500 mb-2">Фото (до {max})</label>
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
         <DndContext
           sensors={sensors}

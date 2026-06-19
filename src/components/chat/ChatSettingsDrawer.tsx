@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import { updateChat, removeChatMember, uploadMedia } from '../../api'
 import type { Chat, Message } from '../../types'
 import { chatTitle, chatAvatarUrl, initial, otherMember } from '../../lib/chat'
+import { pluralLabel } from '../../lib/plural'
 import PhotoGallery from '../PhotoGallery'
 
 interface ChatSettingsDrawerProps {
@@ -21,10 +22,10 @@ interface ChatSettingsDrawerProps {
 type Tab = 'photo' | 'video' | 'voice' | 'file'
 
 const TABS: { value: Tab; label: string }[] = [
-  { value: 'photo', label: 'Photos' },
-  { value: 'video', label: 'Videos' },
-  { value: 'voice', label: 'Voice' },
-  { value: 'file', label: 'Files' },
+  { value: 'photo', label: 'Фото' },
+  { value: 'video', label: 'Видео' },
+  { value: 'voice', label: 'Голосовые' },
+  { value: 'file', label: 'Файлы' },
 ]
 
 function fmtDuration(sec?: number): string {
@@ -36,13 +37,13 @@ function fmtDuration(sec?: number): string {
 
 function fmtSize(bytes?: number): string {
   if (!bytes) return ''
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < 1024) return `${bytes} Б`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} КБ`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
 }
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 const CloseIcon = (
@@ -180,11 +181,11 @@ export default function ChatSettingsDrawer({
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 active:bg-slate-100"
-            aria-label="Close"
+            aria-label="Закрыть"
           >
             {CloseIcon}
           </button>
-          <p className="font-semibold text-slate-900">Chat info</p>
+          <p className="font-semibold text-slate-900">Информация о чате</p>
         </div>
 
         <div className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom,0px)]">
@@ -247,7 +248,7 @@ export default function ChatSettingsDrawer({
               )}
               <p className="text-xs text-slate-400 mt-1">
                 {isGroup
-                  ? `${chat.members.length} ${chat.members.length === 1 ? 'member' : 'members'}`
+                  ? pluralLabel(chat.members.length, 'участник', 'участника', 'участников')
                   : direct?.username
                     ? `@${direct.username}`
                     : ''}
@@ -257,7 +258,7 @@ export default function ChatSettingsDrawer({
 
           {/* Participants */}
           <div className="border-t border-slate-100 pt-2">
-            <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Participants</p>
+            <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Участники</p>
             {chat.members.map((m) => {
               const me = m.user_id === currentUserId
               return (
@@ -272,13 +273,13 @@ export default function ChatSettingsDrawer({
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-slate-900 text-sm truncate">
                       {m.name || `@${m.username}`}
-                      {me && <span className="text-slate-400 font-normal"> (You)</span>}
+                      {me && <span className="text-slate-400 font-normal"> (вы)</span>}
                     </p>
                     {m.username && <p className="text-slate-400 text-xs truncate">@{m.username}</p>}
                   </div>
                   {m.role === 'owner' && (
                     <span className="text-[11px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                      owner
+                      владелец
                     </span>
                   )}
                   {isGroup && !me && (
@@ -286,7 +287,7 @@ export default function ChatSettingsDrawer({
                       onClick={() => removeMember(m.user_id)}
                       disabled={busyMember === m.user_id}
                       className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 flex-shrink-0 disabled:opacity-40"
-                      aria-label="Remove"
+                      aria-label="Убрать"
                     >
                       {busyMember === m.user_id ? (
                         <span className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
@@ -308,7 +309,7 @@ export default function ChatSettingsDrawer({
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
                     <path d="M12 5v14M5 12h14" />
                   </svg>
-                  Add member
+                  Добавить участника
                 </button>
                 {currentUserId && chat.members.some((m) => m.user_id === currentUserId) && (
                   <button
@@ -316,7 +317,7 @@ export default function ChatSettingsDrawer({
                     disabled={busyMember === currentUserId}
                     className="w-full text-red-500 rounded-xl py-3 font-semibold text-sm active:bg-red-50 disabled:opacity-40"
                   >
-                    Leave group
+                    Покинуть группу
                   </button>
                 )}
               </div>
@@ -344,7 +345,7 @@ export default function ChatSettingsDrawer({
                 (photos.length ? (
                   <PhotoGallery photos={photos.map((m) => m.attachment_url!)} />
                 ) : (
-                  <Empty label="No photos yet" />
+                  <Empty label="Пока нет фото" />
                 ))}
 
               {tab === 'video' &&
@@ -362,7 +363,7 @@ export default function ChatSettingsDrawer({
                     ))}
                   </div>
                 ) : (
-                  <Empty label="No videos yet" />
+                  <Empty label="Пока нет видео" />
                 ))}
 
               {tab === 'voice' &&
@@ -383,7 +384,7 @@ export default function ChatSettingsDrawer({
                     ))}
                   </div>
                 ) : (
-                  <Empty label="No voice messages yet" />
+                  <Empty label="Пока нет голосовых сообщений" />
                 ))}
 
               {tab === 'file' &&
@@ -405,7 +406,7 @@ export default function ChatSettingsDrawer({
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-slate-900 truncate">
-                            {(m.attachment_meta?.name as string) || 'File'}
+                            {(m.attachment_meta?.name as string) || 'Файл'}
                           </p>
                           <p className="text-[11px] text-slate-400">
                             {[fmtSize(m.attachment_meta?.size as number), fmtDate(m.created_at)]
@@ -417,7 +418,7 @@ export default function ChatSettingsDrawer({
                     ))}
                   </div>
                 ) : (
-                  <Empty label="No files yet" />
+                  <Empty label="Пока нет файлов" />
                 ))}
             </div>
           </div>

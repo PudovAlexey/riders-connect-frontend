@@ -1,9 +1,9 @@
 import type { EventType, EventVisibility } from '../types'
 
 export const EVENT_TYPES: { value: EventType; label: string }[] = [
-  { value: 'meeting', label: 'Meeting' },
-  { value: 'trip', label: 'Trip' },
-  { value: 'photosession', label: 'Photo' },
+  { value: 'meeting', label: 'Встреча' },
+  { value: 'trip', label: 'Поездка' },
+  { value: 'photosession', label: 'Фотосессия' },
 ]
 
 export function typeLabel(type: EventType): string {
@@ -11,15 +11,15 @@ export function typeLabel(type: EventType): string {
 }
 
 export function visibilityLabel(v: EventVisibility): string {
-  return v === 'public' ? 'Public' : 'Private'
+  return v === 'public' ? 'Открытый' : 'Приватный'
 }
 
 // e.g. "Sat, Jul 1 · 13:00"
 export function formatEventDate(iso: string): string {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
-  const day = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  const day = d.toLocaleDateString('ru-RU', { weekday: 'short', month: 'short', day: 'numeric' })
+  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
   return `${day} · ${time}`
 }
 

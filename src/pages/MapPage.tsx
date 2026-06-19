@@ -3,21 +3,26 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents 
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import useWebSocket from 'react-use-websocket'
-import { getUsersOnMap, getPoints, createDirectChat, getChats, sendMessage, getEvents } from '../api'
+import { getUsersOnMap, getPoints, createDirectChat, getChats, sendMessage, getEvents, getRouteById } from '../api'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { UserLocation, Point, Chat } from '../types'
+import type { UserLocation, Point, Chat, Route } from '../types'
 import BottomSheet from '../components/BottomSheet'
 import { buildWsUrl } from '../lib/config'
 import { POINT_CATEGORIES, categoryMeta, categorySvg, createCategoryIcon } from '../lib/pointCategories'
-import { getRoute, hasRoutingKey, formatDistance, formatDuration, type RouteResult } from '../lib/routing'
+import { getRoute, getRouteMulti, splitRouteByCursor, hasRoutingKey, formatDistance, formatDuration, type RouteResult } from '../lib/routing'
+import { numberedWaypointIcon } from '../lib/mapIcons'
+import { useRouteProgress, useActiveRoute, setActiveRoute } from '../lib/routeProgress'
+import RouteProgressStrip from '../components/RouteProgressStrip'
+import WaypointSheet from '../components/WaypointSheet'
 import { buildPointUrl } from '../lib/mapShare'
 import { yandexRouteUrl, dgisRouteUrl, googleRouteUrl } from '../lib/externalMaps'
 import { chatTitle, chatAvatarUrl, initial } from '../lib/chat'
 import PointReviews from '../components/PointReviews'
 import RoutePlanner from '../components/RoutePlanner'
 import { type Endpoint, type PlaceItem, type EndpointTarget, endpointLabel } from '../lib/routePlanner'
+import { pluralLabel } from '../lib/plural'
 
 // Fix Leaflet default icon in Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -28,10 +33,10 @@ L.Icon.Default.mergeOptions({
 })
 
 // Live-location marker: solid core + white ring + a soft pulsing halo
-// (the .rc-loc* classes + keyframes live in index.css).
+// (the .mc-loc* classes + keyframes live in index.css).
 const myIcon = L.divIcon({
   className: '',
-  html: '<div class="rc-loc"><span class="rc-loc-pulse"></span><span class="rc-loc-core"></span></div>',
+  html: '<div class="mc-loc"><span class="mc-loc-pulse"></span><span class="mc-loc-core"></span></div>',
   iconSize: [24, 24],
   iconAnchor: [12, 12],
 })
@@ -118,6 +123,59 @@ function ViewportPoints({ param, setPoints }: { param: CategoryParam; setPoints:
   return null
 }
 
+// Draws a saved route being tracked: grey for the part already ridden (up to the
+// progress cursor) and red for what's ahead, with numbered markers (tap one to
+// open its card). Pure renderer — route + cursor come from the parent. Rendered
+// as a child of <MapContainer>. Owns only the ORS geometry fetch; FitRoute keys
+// on the stable geom.coords so cursor changes never re-fit the viewport.
+function TrackedRoute({ route, current, onSelectPoint }: { route: Route; current: number; onSelectPoint: (i: number) => void }) {
+  const [geom, setGeom] = useState<{ coords: [number, number][]; wayPoints: number[] } | null>(null)
+
+  useEffect(() => {
+    const pts = route.points.map((p) => [p.lat, p.lon] as [number, number])
+    const identity = pts.map((_, i) => i)
+    if (pts.length < 2) { setGeom({ coords: pts, wayPoints: identity }); return }
+    let cancelled = false
+    setGeom(null)
+    getRouteMulti(pts).then((res) => {
+      if (cancelled) return
+      if (res && res.coords.length) setGeom({ coords: res.coords, wayPoints: res.wayPoints.length ? res.wayPoints : identity })
+      else setGeom({ coords: pts, wayPoints: identity })
+    })
+    return () => { cancelled = true }
+  }, [route])
+
+  if (!geom) return null
+  const { ridden, ahead } = splitRouteByCursor(geom.coords, geom.wayPoints, current)
+  const color = (i: number) => (i < current ? '#9ca3af' : i === current ? '#f97316' : '#ef4444')
+
+  return (
+    <>
+      {ridden.length >= 2 && (
+        <>
+          <Polyline positions={ridden} pathOptions={{ color: '#ffffff', weight: 8, opacity: 0.9 }} />
+          <Polyline positions={ridden} pathOptions={{ color: '#9ca3af', weight: 5, opacity: 1 }} />
+        </>
+      )}
+      {ahead.length >= 2 && (
+        <>
+          <Polyline positions={ahead} pathOptions={{ color: '#ffffff', weight: 8, opacity: 0.9 }} />
+          <Polyline positions={ahead} pathOptions={{ color: '#ef4444', weight: 5, opacity: 1 }} />
+        </>
+      )}
+      {route.points.map((p, i) => (
+        <Marker
+          key={i}
+          position={[p.lat, p.lon]}
+          icon={numberedWaypointIcon(i + 1, color(i))}
+          eventHandlers={{ click: () => onSelectPoint(i) }}
+        />
+      ))}
+      <FitRoute coords={geom.coords} />
+    </>
+  )
+}
+
 export default function MapPage() {
   const { user, token, promptLogin, authOpen } = useAuth()
   const { isDark } = useTheme()
@@ -155,6 +213,15 @@ export default function MapPage() {
   // Share / send-to-chat from the point-detail sheet.
   const [searchParams, setSearchParams] = useSearchParams()
   const [deepLinkPos, setDeepLinkPos] = useState<[number, number] | null>(null)
+  // Route tracking: /map?track=<routeId> draws that saved route (grey ridden /
+  // red ahead) with a banner to stop. The active route is also persisted in
+  // localStorage so it survives bottom-nav tab switches (which drop the param).
+  const trackParam = searchParams.get('track')
+  const activeRoute = useActiveRoute()
+  const trackId = trackParam ?? activeRoute
+  const [trackedRoute, setTrackedRoute] = useState<Route | null>(null)
+  const [activeWaypoint, setActiveWaypoint] = useState<number | null>(null)
+  const { current, setCurrent } = useRouteProgress(trackId ?? '')
   const pendingPointId = useRef<string | null>(null)
   const [toast, setToast] = useState('')
   const toastTimer = useRef<number | undefined>(undefined)
@@ -264,6 +331,22 @@ export default function MapPage() {
     }
   }, [points, setSearchParams])
 
+  // Persist the tracked route id so it survives tab switches. The `!==` guard
+  // makes this write once (avoids a write→event→write loop via useActiveRoute).
+  useEffect(() => {
+    if (trackParam && trackParam !== activeRoute) setActiveRoute(trackParam)
+  }, [trackParam, activeRoute])
+
+  // Load the tracked route (for the banner + waypoint cards). Clears when stopped.
+  useEffect(() => {
+    if (!trackId) { setTrackedRoute(null); return }
+    let cancelled = false
+    getRouteById(trackId)
+      .then((r) => { if (!cancelled) setTrackedRoute(r.data) })
+      .catch(() => { if (!cancelled) setTrackedRoute(null) })
+    return () => { cancelled = true }
+  }, [trackId])
+
   // A logged-out user tapped "Оставить отзыв": close the card first (otherwise
   // the auth sheet opens behind it), open login, and stash the point to reopen.
   const requireAuthForReview = () => {
@@ -349,13 +432,16 @@ export default function MapPage() {
     if (await runRoute(from, to, endpointLabel(to))) setPlannerOpen(false)
   }
 
-  // Quick "Маршрут сюда" from a point's sheet: me → point, via the same path.
-  const buildRoute = async (point: Point) => {
-    const target: Endpoint = { kind: 'place', name: point.name, pos: [point.lat, point.lon], group: 'poi' }
+  // Build an ORS route from my location to a named place; closes any open sheet.
+  const buildRouteToPlace = async (name: string, pos: [number, number]) => {
+    const target: Endpoint = { kind: 'place', name, pos, group: 'poi' }
     setFrom({ kind: 'me' })
     setTo(target)
-    if (await runRoute({ kind: 'me' }, target, point.name)) setActivePoint(null)
+    if (await runRoute({ kind: 'me' }, target, name)) { setActivePoint(null); setActiveWaypoint(null) }
   }
+
+  // Quick "Маршрут сюда" from a point's sheet: me → point, via the same path.
+  const buildRoute = (point: Point) => buildRouteToPlace(point.name, [point.lat, point.lon])
 
   // Selectable places for the planner list: viewport POI + riders + trip events.
   const places: PlaceItem[] = useMemo(() => {
@@ -365,7 +451,7 @@ export default function MapPage() {
     const riders = locations
       .filter((l) => l.user_id !== user?.id)
       .map((l): PlaceItem => ({
-        id: `rider-${l.user_id}`, name: l.name || 'Rider',
+        id: `rider-${l.user_id}`, name: l.name || 'Райдер',
         sub: onlineIds.has(l.user_id) ? 'Райдер · онлайн' : 'Райдер', pos: [l.lat, l.lon], group: 'rider',
       }))
     return [...poi, ...riders, ...eventPlaces]
@@ -427,6 +513,21 @@ export default function MapPage() {
     }
   }
 
+  // Stop tracking: clear the persisted active route first (else the persistence
+  // effect would re-hydrate the param), then drop ?track from the URL.
+  const stopTracking = () => {
+    setActiveRoute(null)
+    setActiveWaypoint(null)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('track')
+        return next
+      },
+      { replace: true },
+    )
+  }
+
   return (
     <div className="relative h-screen">
       <MapContainer
@@ -446,7 +547,16 @@ export default function MapPage() {
         />
 
         {deepLinkPos && <FlyTo pos={deepLinkPos} />}
-        {myPos && !flyToRef.current && !deepLinkPos && <FlyTo pos={myPos} />}
+        {myPos && !flyToRef.current && !deepLinkPos && !trackId && <FlyTo pos={myPos} />}
+
+        {/* Tracked saved route (grey ridden / red ahead) */}
+        {trackId && trackedRoute && (
+          <TrackedRoute
+            route={trackedRoute}
+            current={current}
+            onSelectPoint={(i) => { setActivePoint(null); setActiveWaypoint(i) }}
+          />
+        )}
 
         <ViewportPoints param={categoryParam} setPoints={setPoints} />
 
@@ -456,7 +566,7 @@ export default function MapPage() {
             key={p.id}
             position={[p.lat, p.lon]}
             icon={createCategoryIcon(p.category)}
-            eventHandlers={{ click: () => setActivePoint(p) }}
+            eventHandlers={{ click: () => { setActiveWaypoint(null); setActivePoint(p) } }}
           />
         ))}
 
@@ -464,7 +574,7 @@ export default function MapPage() {
         {myPos && (
           <Marker position={myPos} icon={myIcon}>
             <Popup>
-              <span className="font-medium text-slate-800">You</span>
+              <span className="font-medium text-slate-800">Вы</span>
             </Popup>
           </Marker>
         )}
@@ -494,10 +604,10 @@ export default function MapPage() {
                     )}
                     <div>
                       <p className="font-semibold text-slate-800 text-sm leading-tight">
-                        {l.name || 'Rider'}
+                        {l.name || 'Райдер'}
                       </p>
                       <p style={{ color: onlineIds.has(l.user_id) ? '#22c55e' : '#94a3b8', fontSize: 11 }}>
-                        {onlineIds.has(l.user_id) ? 'online' : 'offline'}
+                        {onlineIds.has(l.user_id) ? 'онлайн' : 'офлайн'}
                       </p>
                     </div>
                   </div>
@@ -506,7 +616,7 @@ export default function MapPage() {
                       onClick={() => startChat(l.user_id)}
                       className="bg-primary text-white text-xs rounded-lg px-3 py-1.5 font-medium"
                     >
-                      Start chat
+                      Написать
                     </button>
                   )}
                 </div>
@@ -543,7 +653,7 @@ export default function MapPage() {
       <button
         onClick={() => setFilterOpen(true)}
         className="absolute top-4 left-4 z-[1000] w-12 h-12 bg-surface rounded-full shadow-lg flex items-center justify-center text-primary active:bg-slate-50 transition-colors"
-        title="Filter"
+        title="Фильтр"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
           <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
@@ -565,17 +675,49 @@ export default function MapPage() {
       <button
         onClick={locateMe}
         className="absolute bottom-20 right-4 z-[1000] w-12 h-12 bg-surface rounded-full shadow-lg flex items-center justify-center text-primary active:bg-slate-50 transition-colors"
-        title="My location"
+        title="Моё местоположение"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
           <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z" />
         </svg>
       </button>
 
-      {/* Online badge — real-time via WS (hidden while picking a point) */}
-      {!picking && (
+      {/* Online badge — real-time via WS (hidden while picking a point or tracking) */}
+      {!picking && !trackId && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-surface/90 backdrop-blur px-3 py-1 rounded-full shadow text-xs text-slate-600">
-          {onlineCount} rider{onlineCount !== 1 ? 's' : ''} online
+          {pluralLabel(onlineCount, 'райдер', 'райдера', 'райдеров')} онлайн
+        </div>
+      )}
+
+      {/* Tracking banner — route name + progress strip + ✕ to stop following */}
+      {trackId && trackedRoute && !picking && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-surface rounded-2xl shadow-lg px-3 py-2 w-[min(92vw,360px)]">
+          <div className="flex items-center gap-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-primary flex-shrink-0">
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+              <line x1="8" y1="2" x2="8" y2="18" />
+              <line x1="16" y1="6" x2="16" y2="22" />
+            </svg>
+            <span className="text-sm font-semibold text-slate-900 truncate flex-1">
+              {trackedRoute.name || 'Маршрут'}
+            </span>
+            <button
+              onClick={stopTracking}
+              className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:bg-slate-200 flex-shrink-0"
+              title="Завершить отслеживание"
+              aria-label="Завершить отслеживание"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+          {trackedRoute.points.length >= 2 && (
+            <RouteProgressStrip
+              count={trackedRoute.points.length}
+              current={current}
+              onSelect={setCurrent}
+              className="mt-2"
+            />
+          )}
         </div>
       )}
 
@@ -588,7 +730,7 @@ export default function MapPage() {
           <button
             onClick={() => { setPicking(null); setPlannerOpen(true) }}
             className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:bg-slate-200 flex-shrink-0"
-            title="Cancel"
+            title="Отмена"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
@@ -608,7 +750,7 @@ export default function MapPage() {
           <button
             onClick={() => setRoute(null)}
             className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:bg-slate-200 flex-shrink-0"
-            title="Clear route"
+            title="Очистить маршрут"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -621,10 +763,10 @@ export default function MapPage() {
       <BottomSheet open={filterOpen} onClose={() => setFilterOpen(false)}>
         <div className="px-4 pb-8 pt-1">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-lg font-bold text-slate-900">Map filters</p>
+            <p className="text-lg font-bold text-slate-900">Фильтры карты</p>
             <div className="flex gap-2">
-              <button onClick={selectAll} className="text-xs font-medium text-primary">Select all</button>
-              <button onClick={clearAll} className="text-xs font-medium text-slate-400">Clear</button>
+              <button onClick={selectAll} className="text-xs font-medium text-primary">Выбрать всё</button>
+              <button onClick={clearAll} className="text-xs font-medium text-slate-400">Сбросить</button>
             </div>
           </div>
 
@@ -635,9 +777,9 @@ export default function MapPage() {
               showRiders ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'
             }`}
           >
-            <span>Motorcyclists</span>
+            <span>Мотоциклисты</span>
             <span className={`text-xs ${showRiders ? 'text-white/80' : 'text-slate-400'}`}>
-              {showRiders ? 'shown' : 'hidden'}
+              {showRiders ? 'показаны' : 'скрыты'}
             </span>
           </button>
 
@@ -752,19 +894,19 @@ export default function MapPage() {
             <div className="space-y-2 text-sm">
               {activePoint.address && (
                 <div className="flex gap-2">
-                  <span className="text-slate-400 w-16 shrink-0">Address</span>
+                  <span className="text-slate-400 w-16 shrink-0">Адрес</span>
                   <span className="text-slate-700">{activePoint.address}</span>
                 </div>
               )}
               {activePoint.phone && (
                 <div className="flex gap-2">
-                  <span className="text-slate-400 w-16 shrink-0">Phone</span>
+                  <span className="text-slate-400 w-16 shrink-0">Телефон</span>
                   <a href={`tel:${activePoint.phone}`} className="text-primary">{activePoint.phone}</a>
                 </div>
               )}
               {activePoint.website && (
                 <div className="flex gap-2">
-                  <span className="text-slate-400 w-16 shrink-0">Website</span>
+                  <span className="text-slate-400 w-16 shrink-0">Сайт</span>
                   <a href={activePoint.website} target="_blank" rel="noreferrer" className="text-primary truncate">
                     {activePoint.website}
                   </a>
@@ -772,7 +914,7 @@ export default function MapPage() {
               )}
               {activePoint.hours && (
                 <div className="flex gap-2">
-                  <span className="text-slate-400 w-16 shrink-0">Hours</span>
+                  <span className="text-slate-400 w-16 shrink-0">Часы</span>
                   <span className="text-slate-700">{activePoint.hours}</span>
                 </div>
               )}
@@ -848,6 +990,20 @@ export default function MapPage() {
         onBuild={buildRouteAB}
         building={routing}
         error={routeError}
+      />
+
+      {/* Tapped route waypoint card (during tracking) */}
+      <WaypointSheet
+        open={activeWaypoint !== null}
+        onClose={() => setActiveWaypoint(null)}
+        point={trackedRoute && activeWaypoint != null ? trackedRoute.points[activeWaypoint] : null}
+        index={activeWaypoint ?? 0}
+        current={current}
+        lastIndex={(trackedRoute?.points.length ?? 1) - 1}
+        onSetCurrent={(i) => { setCurrent(i); setActiveWaypoint(null) }}
+        onRouteHere={buildRouteToPlace}
+        onToast={showToast}
+        onRequireAuth={requireAuthForReview}
       />
 
       {/* Transient toast (e.g. link copied) */}

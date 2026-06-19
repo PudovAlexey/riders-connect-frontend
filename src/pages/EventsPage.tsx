@@ -9,15 +9,15 @@ import type { RideEvent } from '../types'
 import AppHeader from '../components/AppHeader'
 
 const SCOPES: { value: EventScope; label: string }[] = [
-  { value: 'feed', label: 'Feed' },
-  { value: 'mine', label: 'Mine' },
-  { value: 'invitations', label: 'Invitations' },
+  { value: 'feed', label: 'Лента' },
+  { value: 'mine', label: 'Мои' },
+  { value: 'invitations', label: 'Приглашения' },
 ]
 
 const EMPTY_TEXT: Record<EventScope, string> = {
-  feed: 'No events yet',
-  mine: 'You have no events',
-  invitations: 'No invitations',
+  feed: 'Пока нет эвентов',
+  mine: 'У вас нет эвентов',
+  invitations: 'Нет приглашений',
 }
 
 export default function EventsPage() {
@@ -53,7 +53,7 @@ export default function EventsPage() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-100">
       <AppHeader
-        title="Events"
+        title="Эвенты"
         actions={
           <button
             onClick={openForm}
@@ -91,7 +91,7 @@ export default function EventsPage() {
             <p className="text-base font-semibold text-slate-900">{EMPTY_TEXT[scope]}</p>
             {scope !== 'invitations' && (
               <button onClick={openForm} className="text-sm text-primary font-medium mt-2">
-                Create an event
+                Создать эвент
               </button>
             )}
           </div>
@@ -107,10 +107,10 @@ export default function EventsPage() {
                   {typeLabel(e.type)}
                 </span>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                  {e.visibility === 'public' ? 'Public' : 'Private'}
+                  {e.visibility === 'public' ? 'Открытый' : 'Приватный'}
                 </span>
               </div>
-              <p className="font-bold text-slate-900">{e.title || 'Untitled'}</p>
+              <p className="font-bold text-slate-900">{e.title || 'Без названия'}</p>
               <p className="text-sm text-slate-500 mt-0.5">{formatEventDate(e.starts_at)}</p>
               {e.type === 'trip' && e.details?.destination?.address && (
                 <p className="text-xs text-slate-400 mt-1 truncate">📍 {e.details.destination.address}</p>
@@ -124,7 +124,7 @@ export default function EventsPage() {
                     onClick={(ev) => { ev.stopPropagation(); respond(e.id, 'accepted') }}
                     className="flex-1 text-center bg-primary text-white rounded-xl py-2 text-sm font-semibold active:opacity-80"
                   >
-                    Accept
+                    Принять
                   </span>
                   <span
                     role="button"
@@ -132,7 +132,7 @@ export default function EventsPage() {
                     onClick={(ev) => { ev.stopPropagation(); respond(e.id, 'declined') }}
                     className="flex-1 text-center bg-slate-100 text-slate-700 rounded-xl py-2 text-sm font-semibold active:bg-slate-200"
                   >
-                    Decline
+                    Отклонить
                   </span>
                 </div>
               )}

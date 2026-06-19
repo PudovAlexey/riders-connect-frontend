@@ -21,12 +21,12 @@ const STATUS_BAR: Record<ServiceStatus, string> = {
 
 const STATUS_BADGE: Record<ServiceStatus, { label: string; cls: string } | null> = {
   ok: null,
-  soon: { label: 'Due soon', cls: 'bg-amber-100 text-amber-700' },
-  overdue: { label: 'Overdue', cls: 'bg-red-100 text-red-600' },
+  soon: { label: 'Скоро', cls: 'bg-amber-100 text-amber-700' },
+  overdue: { label: 'Просрочено', cls: 'bg-red-100 text-red-600' },
   untracked: null,
 }
 
-const km = (n: number) => n.toLocaleString('en-US')
+const km = (n: number) => n.toLocaleString('ru-RU')
 
 /**
  * Per-vehicle maintenance manager. Lists tracked service items with a
@@ -62,9 +62,9 @@ export default function MaintenanceSheet({ open, vehicle, onClose, onChanged }: 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
           <div>
-            <p className="font-semibold text-slate-900">Maintenance</p>
+            <p className="font-semibold text-slate-900">Обслуживание</p>
             <p className="text-xs text-slate-400">
-              {vehicle.make} {vehicle.model} · {km(vehicle.mileage)} km
+              {vehicle.make} {vehicle.model} · {km(vehicle.mileage)} км
             </p>
           </div>
           <button
@@ -134,7 +134,7 @@ function ListView({ vehicle, busy, editingId, setEditingId, onReset, onSaveEdit,
       <div className="flex-1 overflow-y-auto">
         {items.length === 0 ? (
           <p className="px-4 py-8 text-sm text-slate-400 text-center">
-            Nothing tracked yet. Add oil, chain lube, brake pads and more to keep an eye on intervals.
+            Пока ничего не отслеживается. Добавьте масло, смазку цепи, тормозные колодки и другое, чтобы следить за интервалами.
           </p>
         ) : (
           items.map((item) => (
@@ -160,7 +160,7 @@ function ListView({ vehicle, busy, editingId, setEditingId, onReset, onSaveEdit,
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4">
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Add item
+          Добавить
         </button>
       </div>
     </>
@@ -186,8 +186,8 @@ function ServiceRow({ item, busy, editing, onToggleEdit, onReset, onSaveEdit, on
   const badge = STATUS_BADGE[item.status]
   const remainingText =
     item.remaining_km >= 0
-      ? `${km(item.remaining_km)} km left`
-      : `${km(-item.remaining_km)} km overdue`
+      ? `осталось ${km(item.remaining_km)} км`
+      : `просрочено на ${km(-item.remaining_km)} км`
 
   return (
     <div className="px-4 py-3 border-b border-slate-50">
@@ -209,8 +209,8 @@ function ServiceRow({ item, busy, editing, onToggleEdit, onReset, onSaveEdit, on
             />
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
-            {remainingText} · every {km(item.interval_km)} km
-            {item.times_done > 0 ? ` · done ${item.times_done}×` : ''}
+            {remainingText} · каждые {km(item.interval_km)} км
+            {item.times_done > 0 ? ` · выполнено ${item.times_done}×` : ''}
           </p>
         </div>
 
@@ -219,13 +219,13 @@ function ServiceRow({ item, busy, editing, onToggleEdit, onReset, onSaveEdit, on
           disabled={busy}
           className="bg-primary text-white rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-40 active:opacity-80"
         >
-          Done
+          Готово
         </button>
         <button
           onClick={onToggleEdit}
           disabled={busy}
           className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 active:bg-slate-100 disabled:opacity-40"
-          aria-label="Edit"
+          aria-label="Изменить"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
             <path d="M12 20h9" />
@@ -237,7 +237,7 @@ function ServiceRow({ item, busy, editing, onToggleEdit, onReset, onSaveEdit, on
       {editing && (
         <div className="mt-3 bg-slate-50 rounded-xl p-3 space-y-2">
           <div>
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">Name</label>
+            <label className="block text-[11px] font-medium text-slate-500 mb-1">Название</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -246,7 +246,7 @@ function ServiceRow({ item, busy, editing, onToggleEdit, onReset, onSaveEdit, on
             />
           </div>
           <div>
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">Interval (km)</label>
+            <label className="block text-[11px] font-medium text-slate-500 mb-1">Интервал (км)</label>
             <input
               type="number"
               inputMode="numeric"
@@ -261,14 +261,14 @@ function ServiceRow({ item, busy, editing, onToggleEdit, onReset, onSaveEdit, on
               disabled={busy || !Number(interval)}
               className="flex-1 bg-primary text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-40"
             >
-              Save
+              Сохранить
             </button>
             <button
               onClick={onDelete}
               disabled={busy}
               className="flex-1 bg-red-50 text-red-500 rounded-lg py-2 text-sm font-semibold active:bg-red-100 disabled:opacity-40"
             >
-              Remove
+              Убрать
             </button>
           </div>
         </div>
@@ -323,7 +323,7 @@ function AddView({ vehicle, busy, onBack, onAdd }: AddViewProps) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
             <path d="M15 18l-6-6 6-6" />
           </svg>
-          Back
+          Назад
         </button>
       </div>
 
@@ -339,7 +339,7 @@ function AddView({ vehicle, busy, onBack, onAdd }: AddViewProps) {
             >
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-slate-900 text-sm">{c.label}</p>
-                <p className="text-slate-400 text-xs">every {km(c.defaultKm)} km</p>
+                <p className="text-slate-400 text-xs">каждые {km(c.defaultKm)} км</p>
               </div>
               <span
                 className={`w-5 h-5 rounded-full border flex items-center justify-center ${
@@ -358,12 +358,12 @@ function AddView({ vehicle, busy, onBack, onAdd }: AddViewProps) {
 
         {/* Custom item */}
         <div className="px-4 py-3">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Custom</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Своё</p>
           <div className="flex gap-2">
             <input
               value={customTitle}
               onChange={(e) => setCustomTitle(e.target.value)}
-              placeholder="Name (e.g. Fork oil)"
+              placeholder="Название (напр. масло вилки)"
               className="flex-1 min-w-0 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <input
@@ -371,7 +371,7 @@ function AddView({ vehicle, busy, onBack, onAdd }: AddViewProps) {
               inputMode="numeric"
               value={customKm}
               onChange={(e) => setCustomKm(e.target.value)}
-              placeholder="km"
+              placeholder="км"
               className="w-20 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -384,7 +384,7 @@ function AddView({ vehicle, busy, onBack, onAdd }: AddViewProps) {
           disabled={busy || total === 0}
           className="w-full bg-primary text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-40"
         >
-          Add{total > 0 ? ` (${total})` : ''}
+          Добавить{total > 0 ? ` (${total})` : ''}
         </button>
       </div>
     </>

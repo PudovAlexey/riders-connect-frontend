@@ -37,14 +37,14 @@ export default class ErrorBoundary extends Component<Props, State> {
           </svg>
         </div>
         <div>
-          <p className="font-semibold text-slate-900">Something went wrong</p>
-          <p className="text-sm text-slate-400 mt-1">Please reload the app to continue.</p>
+          <p className="font-semibold text-slate-900">Что-то пошло не так</p>
+          <p className="text-sm text-slate-400 mt-1">Перезагрузите приложение, чтобы продолжить.</p>
         </div>
         <button
           onClick={() => window.location.assign('/')}
           className="bg-primary text-white rounded-xl px-6 py-3 font-semibold text-sm active:opacity-80"
         >
-          Reload
+          Перезагрузить
         </button>
       </div>
     )

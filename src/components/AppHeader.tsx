@@ -21,7 +21,7 @@ export default function AppHeader({ title, subtitle, onBack, actions, border, ch
         {onBack && (
           <button
             onClick={onBack}
-            aria-label="Back"
+            aria-label="Назад"
             className="w-11 h-11 flex items-center justify-center rounded-full active:bg-slate-100 transition-colors flex-shrink-0"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6 text-slate-900">

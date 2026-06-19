@@ -180,3 +180,30 @@ export interface EventItem extends RideEvent {
   participants: EventParticipant[]
   my_status?: ParticipantStatus
 }
+
+// A single ordered waypoint of a Route. `point_id` is set when the waypoint was
+// added from the POI database (a soft reference — the route keeps its own copy of
+// lat/lon/name/address, so a later-deleted POI never breaks the route).
+export interface RoutePoint {
+  lat: number
+  lon: number
+  name: string
+  address?: string
+  point_id?: string
+}
+
+// A saved ride: an ordered list of up to 10 waypoints. `distance_m`/`duration_s`
+// are computed client-side via ORS and echoed back on read. `is_suggested` marks
+// curated recommendation routes (server-only flag).
+export interface Route {
+  id: string
+  owner_id: string
+  name: string
+  description: string
+  points: RoutePoint[]
+  distance_m: number
+  duration_s: number
+  is_suggested: boolean
+  created_at: string
+  updated_at: string
+}

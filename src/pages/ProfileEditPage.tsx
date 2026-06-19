@@ -28,12 +28,12 @@ export default function ProfileEditPage() {
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-surface px-8 gap-5">
-        <p className="text-slate-500 text-sm">Sign in to edit your profile</p>
+        <p className="text-slate-500 text-sm">Войдите, чтобы изменить профиль</p>
         <button
           onClick={promptLogin}
           className="w-full max-w-xs bg-primary text-white rounded-xl py-3.5 font-semibold text-base active:bg-primary-dark transition-colors"
         >
-          Sign in
+          Войти
         </button>
       </div>
     )
@@ -70,7 +70,7 @@ export default function ProfileEditPage() {
     } catch {
       revokeBlob()
       setAvatarUrl(user.avatar_url ?? '')
-      setError('Could not upload photo')
+      setError('Не удалось загрузить фото')
     } finally {
       setUploading(false)
     }
@@ -81,7 +81,7 @@ export default function ProfileEditPage() {
     if (!nameInput.trim() || uploading) return
     const cleanUsername = usernameInput.trim().replace(/^@/, '').toLowerCase()
     if (cleanUsername && !/^[a-z0-9_]{3,32}$/.test(cleanUsername)) {
-      setError('Login must be 3–32 chars: a–z, 0–9, _')
+      setError('Логин: 3–32 символа: a–z, 0–9, _')
       return
     }
     setSaving(true)
@@ -95,9 +95,9 @@ export default function ProfileEditPage() {
       updateUser(res.data)
       navigate('/profile')
     } catch (err: any) {
-      if (err?.response?.status === 409) setError('That login is already taken')
-      else if (err?.response?.status === 400) setError('Invalid login')
-      else setError('Could not save')
+      if (err?.response?.status === 409) setError('Этот логин уже занят')
+      else if (err?.response?.status === 400) setError('Неверный логин')
+      else setError('Не удалось сохранить')
     } finally {
       setSaving(false)
     }
@@ -105,7 +105,7 @@ export default function ProfileEditPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-100">
-      <AppHeader onBack={() => navigate('/profile')} title="Edit profile" />
+      <AppHeader onBack={() => navigate('/profile')} title="Изменить профиль" />
 
       <form onSubmit={handleSave} className="flex-1 px-4 py-4 space-y-3 pb-24">
         {/* Avatar */}
@@ -137,24 +137,24 @@ export default function ProfileEditPage() {
             disabled={uploading}
             className="mt-3 text-sm font-semibold text-primary disabled:opacity-50"
           >
-            {uploading ? 'Uploading…' : 'Change photo'}
+            {uploading ? 'Загрузка…' : 'Сменить фото'}
           </button>
         </div>
 
         {/* Fields */}
         <div className="bg-surface rounded-2xl shadow-sm overflow-hidden px-4 py-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Display name</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Отображаемое имя</label>
             <input
               type="text"
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
-              placeholder="Your name"
+              placeholder="Ваше имя"
               className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Login</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Логин</label>
             <div className="flex items-center border border-slate-200 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-primary">
               <span className="text-slate-400 text-sm">@</span>
               <input
@@ -167,7 +167,7 @@ export default function ProfileEditPage() {
                 className="flex-1 ml-1 text-slate-900 focus:outline-none text-sm bg-transparent"
               />
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Others can add you to chats by this login</p>
+            <p className="text-[11px] text-slate-400 mt-1">По этому логину вас можно добавлять в чаты</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
@@ -183,7 +183,7 @@ export default function ProfileEditPage() {
           disabled={saving || uploading || !nameInput.trim()}
           className="w-full bg-primary text-white rounded-xl py-3.5 font-semibold text-base disabled:opacity-50 transition-opacity"
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Сохраняем…' : 'Сохранить'}
         </button>
       </form>
     </div>

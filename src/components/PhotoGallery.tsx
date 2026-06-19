@@ -61,7 +61,7 @@ export default function PhotoGallery({ photos }: PhotoGalleryProps) {
             type="button"
             onClick={() => setIndex(null)}
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white"
-            aria-label="Close"
+            aria-label="Закрыть"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -81,7 +81,7 @@ export default function PhotoGallery({ photos }: PhotoGalleryProps) {
                 type="button"
                 onClick={go(-1)}
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-white text-2xl leading-none"
-                aria-label="Previous"
+                aria-label="Назад"
               >
                 ‹
               </button>
@@ -89,7 +89,7 @@ export default function PhotoGallery({ photos }: PhotoGalleryProps) {
                 type="button"
                 onClick={go(1)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-white text-2xl leading-none"
-                aria-label="Next"
+                aria-label="Вперёд"
               >
                 ›
               </button>

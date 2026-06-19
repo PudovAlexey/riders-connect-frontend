@@ -82,14 +82,14 @@ export default function ChatListPage() {
           </svg>
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-bold text-slate-900">Join the community</h2>
-          <p className="text-slate-500 text-sm mt-1">Register to message other riders</p>
+          <h2 className="text-xl font-bold text-slate-900">Присоединяйтесь</h2>
+          <p className="text-slate-500 text-sm mt-1">Зарегистрируйтесь, чтобы писать другим райдерам</p>
         </div>
         <button
           onClick={promptLogin}
           className="w-full max-w-xs bg-primary text-white rounded-xl py-3.5 font-semibold text-base active:bg-primary-dark transition-colors"
         >
-          Register / Sign in
+          Регистрация / Вход
         </button>
       </div>
     )
@@ -100,13 +100,13 @@ export default function ChatListPage() {
       {/* Static header — only the chat list below scrolls. */}
       <div className="sticky top-0 z-30 bg-surface">
       <AppHeader
-        title="Messages"
+        title="Чаты"
         border
         actions={
           <>
             <button
               onClick={() => navigate('/contacts')}
-              title="Contacts"
+              title="Контакты"
               className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-600"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
@@ -115,7 +115,7 @@ export default function ChatListPage() {
             </button>
             <button
               onClick={() => navigate('/chat/new')}
-              title="New chat"
+              title="Новый чат"
               className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
@@ -132,7 +132,7 @@ export default function ChatListPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search chats..."
+            placeholder="Поиск чатов…"
             className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
           />
         </div>
@@ -147,8 +147,8 @@ export default function ChatListPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2">
-            <p className="text-slate-400 text-sm">{query ? 'Nothing found' : 'No conversations yet'}</p>
-            <p className="text-slate-300 text-xs">Tap + to start a chat or group</p>
+            <p className="text-slate-400 text-sm">{query ? 'Ничего не найдено' : 'Пока нет чатов'}</p>
+            <p className="text-slate-300 text-xs">Нажмите +, чтобы начать чат или группу</p>
           </div>
         ) : (
           filtered.map((c) => {
@@ -185,13 +185,13 @@ export default function ChatListPage() {
                             className={`w-3.5 h-3 ${lastRead ? 'text-sky-500' : 'text-slate-400'}`}
                           />
                         )}
-                        {new Date(c.last_message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(c.last_message.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-0.5">
                     <p className={`text-xs truncate ${unread > 0 ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
-                      {messagePreview(c.last_message) || chatSubtitle(c, user.id) || 'No messages yet'}
+                      {messagePreview(c.last_message) || chatSubtitle(c, user.id) || 'Пока нет сообщений'}
                     </p>
                     {unread > 0 && (
                       <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-[11px] font-semibold flex items-center justify-center">

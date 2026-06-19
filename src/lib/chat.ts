@@ -1,12 +1,13 @@
 import type { Chat, ChatMember, Message } from '../types'
 import { parsePointShare } from './mapShare'
+import { pluralLabel } from './plural'
 
 const MEDIA_LABELS: Record<string, string> = {
-  image: '📷 Photo',
-  video: '🎬 Video',
-  audio: '🎤 Voice message',
-  video_note: '⭕ Video message',
-  file: '📎 File',
+  image: '📷 Фото',
+  video: '🎬 Видео',
+  audio: '🎤 Голосовое сообщение',
+  video_note: '⭕ Видеосообщение',
+  file: '📎 Файл',
 }
 
 // Short preview for a chat's last message (typed label for media).
@@ -25,14 +26,14 @@ export function otherMember(chat: Chat, meId?: string): ChatMember | undefined {
 
 // Display title: group title, or the other participant's name/@username.
 export function chatTitle(chat: Chat, meId?: string): string {
-  if (chat.type === 'group') return chat.title || 'Group'
+  if (chat.type === 'group') return chat.title || 'Группа'
   const o = otherMember(chat, meId)
-  if (!o) return 'Chat'
+  if (!o) return 'Чат'
   return o.name || (o.username ? `@${o.username}` : o.user_id.slice(0, 8))
 }
 
 export function chatSubtitle(chat: Chat, meId?: string): string {
-  if (chat.type === 'group') return `${chat.members.length} members`
+  if (chat.type === 'group') return pluralLabel(chat.members.length, 'участник', 'участника', 'участников')
   const o = otherMember(chat, meId)
   return o?.username ? `@${o.username}` : ''
 }

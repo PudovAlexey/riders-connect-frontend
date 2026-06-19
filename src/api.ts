@@ -69,6 +69,9 @@ export const getPoints = (
   return api.get<import('./types').Point[]>(url)
 }
 
+export const getPoint = (id: string) =>
+  api.get<import('./types').Point>(`/points/${id}`)
+
 export const getPointReviews = (pointId: string) =>
   api.get<import('./types').PointReview[]>(`/points/${pointId}/reviews`)
 
@@ -210,3 +213,29 @@ export const respondToEvent = (id: string, status: 'accepted' | 'declined') =>
 
 export const removeEventParticipant = (id: string, userId: string) =>
   api.delete(`/events/${id}/participants/${userId}`)
+
+export interface CreateRouteInput {
+  name: string
+  description?: string
+  points: import('./types').RoutePoint[]
+  distance_m?: number
+  duration_s?: number
+}
+
+export const getRoutes = () =>
+  api.get<import('./types').Route[]>('/routes')
+
+export const getSuggestedRoutes = () =>
+  api.get<import('./types').Route[]>('/routes/suggested')
+
+export const getRouteById = (id: string) =>
+  api.get<import('./types').Route>(`/routes/${id}`)
+
+export const createRoute = (data: CreateRouteInput) =>
+  api.post<import('./types').Route>('/routes', data)
+
+export const updateRoute = (id: string, data: Partial<CreateRouteInput>) =>
+  api.patch<import('./types').Route>(`/routes/${id}`, data)
+
+export const deleteRoute = (id: string) =>
+  api.delete(`/routes/${id}`)

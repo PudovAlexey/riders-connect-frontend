@@ -113,9 +113,9 @@ input, textarea, select, [contenteditable] {
 .react-modal-sheet-drag-indicator { background: rgb(var(--c-slate-300)) !important; }
 
 /* Live-location map marker (used by MapPage `myIcon`). */
-.rc-loc { position: relative; width: 24px; height: 24px; }
-.rc-loc-core,
-.rc-loc-pulse {
+.mc-loc { position: relative; width: 24px; height: 24px; }
+.mc-loc-core,
+.mc-loc-pulse {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -124,21 +124,33 @@ input, textarea, select, [contenteditable] {
   border-radius: 50%;
   transform: translate(-50%, -50%);
 }
-.rc-loc-core {
+.mc-loc-core {
   background: #f97316;
   border: 3px solid #fff;
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
 }
-.rc-loc-pulse {
+.mc-loc-pulse {
   background: #f97316;
   opacity: 0.35;
-  animation: rc-loc-pulse 1.8s ease-out infinite;
+  animation: mc-loc-pulse 1.8s ease-out infinite;
 }
-@keyframes rc-loc-pulse {
+@keyframes mc-loc-pulse {
   0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.35; }
   70%  { opacity: 0; }
   100% { transform: translate(-50%, -50%) scale(3.4); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rc-loc-pulse { animation: none; opacity: 0; }
+  .mc-loc-pulse { animation: none; opacity: 0; }
+}
+
+/* Currently-tracked route card on /routes — orange border + breathing glow. */
+.mc-route-active {
+  animation: mc-route-glow 1.8s ease-in-out infinite;
+}
+@keyframes mc-route-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(249 115 22 / 0.5); }
+  50%      { box-shadow: 0 0 0 7px rgb(249 115 22 / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mc-route-active { animation: none; box-shadow: 0 0 0 3px rgb(249 115 22 / 0.35); }
 }

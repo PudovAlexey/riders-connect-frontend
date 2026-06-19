@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth'
 import type { Message, Chat } from '../types'
 import { chatTitle, chatSubtitle, chatAvatarUrl, initial, senderName, senderAvatar, isMessageRead } from '../lib/chat'
 import { buildWsUrl } from '../lib/config'
+import { pluralLabel } from '../lib/plural'
 import { playSend } from '../lib/sounds'
 import { useRecorder } from '../hooks/useRecorder'
 import MessageContent from '../components/MessageContent'
@@ -340,7 +341,7 @@ export default function ChatRoomPage() {
 
   const isMe = (msg: Message) => msg.sender_id === user?.id
   const isGroup = chat?.type === 'group'
-  const title = chat ? chatTitle(chat, user?.id) : 'Conversation'
+  const title = chat ? chatTitle(chat, user?.id) : 'Чат'
   const subtitle = chat ? chatSubtitle(chat, user?.id) : ''
   const avatar = chat ? chatAvatarUrl(chat, user?.id) : ''
 
@@ -354,7 +355,7 @@ export default function ChatRoomPage() {
       <button
         type="button"
         onClick={() => handleRetry(id)}
-        title="Tap to retry"
+        title="Нажмите, чтобы повторить"
         className="w-5 h-5 flex items-center justify-center text-red-500 flex-shrink-0 mb-1.5"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
@@ -416,7 +417,7 @@ export default function ChatRoomPage() {
             <MessageContent msg={msg} isMe={mine} />
             {!isNote && (
               <p className={`text-[10px] mt-1 flex items-center gap-1 ${mine ? 'justify-end' : ''} ${isMedia ? 'px-3 pb-1.5' : ''} ${mine ? 'text-orange-100' : 'text-slate-400'}`}>
-                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                 {showTicks && (
                   <ReadTicks read={read} className={`w-3.5 h-3 ${read ? 'text-sky-200' : 'text-orange-100'}`} />
                 )}
@@ -424,7 +425,7 @@ export default function ChatRoomPage() {
             )}
           </div>
           {mine && state === 'failed' && (
-            <span className="text-[10px] text-red-400 mt-0.5">Not delivered · tap to retry</span>
+            <span className="text-[10px] text-red-400 mt-0.5">Не доставлено · нажмите, чтобы повторить</span>
           )}
         </div>
       </div>
@@ -451,7 +452,7 @@ export default function ChatRoomPage() {
           <div className="min-w-0">
             <p className="font-semibold text-slate-900 truncate leading-tight">{title}</p>
             <p className="text-xs text-slate-400 truncate">
-              {chat ? `${chat.members.length} ${chat.members.length === 1 ? 'member' : 'members'}` : subtitle}
+              {chat ? pluralLabel(chat.members.length, 'участник', 'участника', 'участников') : subtitle}
             </p>
           </div>
         </button>
@@ -474,7 +475,7 @@ export default function ChatRoomPage() {
         <span className="text-sm tabular-nums">
           {`${Math.floor(audioRec.seconds / 60)}:${(audioRec.seconds % 60).toString().padStart(2, '0')}`}
         </span>
-        <span className="text-xs text-slate-400">Recording…</span>
+        <span className="text-xs text-slate-400">Запись…</span>
       </div>
       <button
         onClick={toggleAudio}
@@ -510,7 +511,7 @@ export default function ChatRoomPage() {
                 </div>
               ) : messages.length === 0 ? (
                 <div className="flex items-center justify-center py-20">
-                  <p className="text-slate-400 text-sm">No messages yet. Say hi!</p>
+                  <p className="text-slate-400 text-sm">Пока нет сообщений. Поздоровайтесь!</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2 px-4 py-3">

@@ -54,7 +54,7 @@ export default function ChatInputBar({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={onFocus}
-        placeholder="Message..."
+        placeholder="Сообщение…"
         className="flex-1 bg-slate-100 rounded-full px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
       />
 
@@ -72,7 +72,7 @@ export default function ChatInputBar({
           <button
             type="button"
             onClick={onVideoNote}
-            title="Video message"
+            title="Видеосообщение"
             className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 flex-shrink-0"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
@@ -83,7 +83,7 @@ export default function ChatInputBar({
           <button
             type="button"
             onClick={onToggleAudio}
-            title="Voice message"
+            title="Голосовое сообщение"
             className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white flex-shrink-0"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">

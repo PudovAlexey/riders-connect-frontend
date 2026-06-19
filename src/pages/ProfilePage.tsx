@@ -6,6 +6,7 @@ import { useGarage } from '../hooks/useGarage'
 import { isMuted, setMuted } from '../lib/sounds'
 import { isPushSupported, getPushState, enablePush, disablePush } from '../lib/push'
 import AppHeader from '../components/AppHeader'
+import { pluralLabel } from '../lib/plural'
 
 function Switch({ on }: { on: boolean }) {
   return (
@@ -122,14 +123,14 @@ export default function ProfilePage() {
           ?
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-bold text-slate-900">Your profile</h2>
-          <p className="text-slate-500 text-sm mt-1">Sign in to manage your profile and settings</p>
+          <h2 className="text-xl font-bold text-slate-900">Ваш профиль</h2>
+          <p className="text-slate-500 text-sm mt-1">Войдите, чтобы управлять профилем и настройками</p>
         </div>
         <button
           onClick={promptLogin}
           className="w-full max-w-xs bg-primary text-white rounded-xl py-3.5 font-semibold text-base active:bg-primary-dark transition-colors"
         >
-          Sign in
+          Войти
         </button>
       </div>
     )
@@ -146,12 +147,12 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-100">
       <AppHeader
-        title="Profile"
+        title="Профиль"
         actions={
           <button
             onClick={() => navigate('/profile/edit')}
             className="w-9 h-9 flex items-center justify-center rounded-full active:bg-slate-100 transition-colors"
-            aria-label="Edit profile"
+            aria-label="Изменить профиль"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5 text-slate-600">
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -167,7 +168,7 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4 px-4 py-5">
             <div className="flex-1 min-w-0">
               <p className="text-2xl font-bold text-slate-900 truncate">
-                {user.name || 'No name'}
+                {user.name || 'Без имени'}
               </p>
               {user.username && <p className="text-sm text-primary mt-1 truncate">@{user.username}</p>}
               <p className="text-sm text-slate-500 mt-1 truncate">{user.email}</p>
@@ -183,7 +184,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Account section */}
-        <SectionCard title="Account">
+        <SectionCard title="Аккаунт">
           <MenuRow
             icon={
               <svg viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" style={{ minWidth: 20 }}>
@@ -194,10 +195,10 @@ export default function ProfilePage() {
                 <path d="M20 30 L14 22 L22 18" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
               </svg>
             }
-            label="My Garage"
+            label="Гараж"
             sublabel={
               vehicles.length > 0
-                ? `${vehicles.length} vehicle${vehicles.length > 1 ? 's' : ''}`
+                ? `${vehicles.length} ${pluralLabel(vehicles.length, 'мотоцикл', 'мотоцикла', 'мотоциклов')}`
                 : undefined
             }
             onClick={() => navigate('/garage')}
@@ -209,7 +210,7 @@ export default function ProfilePage() {
                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
             }
-            label="Edit profile"
+            label="Изменить профиль"
             onClick={() => navigate('/profile/edit')}
           />
           <MenuRow
@@ -219,12 +220,12 @@ export default function ProfilePage() {
                 <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
               </svg>
             }
-            label="Your ID"
+            label="Ваш ID"
             sublabel={user.id}
             onClick={handleCopyId}
             trailing={
               copied ? (
-                <span className="text-xs font-medium text-green-500 flex-shrink-0">Copied!</span>
+                <span className="text-xs font-medium text-green-500 flex-shrink-0">Скопировано!</span>
               ) : (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-300 flex-shrink-0">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -236,7 +237,7 @@ export default function ProfilePage() {
         </SectionCard>
 
         {/* Settings section */}
-        <SectionCard title="Settings">
+        <SectionCard title="Настройки">
           <MenuRow
             icon={<MoonIcon />}
             label="Тёмная тема"
@@ -279,7 +280,7 @@ export default function ProfilePage() {
                 <line x1="21" y1="12" x2="9" y2="12" />
               </svg>
             }
-            label="Log out"
+            label="Выйти"
             onClick={logout}
             danger
           />

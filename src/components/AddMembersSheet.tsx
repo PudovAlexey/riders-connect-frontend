@@ -88,7 +88,7 @@ export default function AddMembersSheet({ open, chat, onClose, onAdded }: AddMem
       reset()
       onClose()
     } catch {
-      setError('Could not add members')
+      setError('Не удалось добавить участников')
     } finally {
       setBusy(false)
     }
@@ -98,7 +98,7 @@ export default function AddMembersSheet({ open, chat, onClose, onAdded }: AddMem
     <BottomSheet open={open} onClose={close}>
       <div>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-          <p className="font-semibold text-slate-900">Add members</p>
+          <p className="font-semibold text-slate-900">Добавить участников</p>
           <button
             onClick={close}
             className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100"
@@ -127,7 +127,7 @@ export default function AddMembersSheet({ open, chat, onClose, onAdded }: AddMem
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by login or name..."
+              placeholder="Поиск по логину или имени…"
               className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
             />
           </div>
@@ -138,11 +138,11 @@ export default function AddMembersSheet({ open, chat, onClose, onAdded }: AddMem
         {/* People list */}
         <div>
           {!query.trim() && (
-            <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Contacts</p>
+            <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Контакты</p>
           )}
           {people.length === 0 ? (
             <p className="px-4 py-6 text-sm text-slate-400 text-center">
-              {query.trim() ? 'No users found' : 'No contacts to add — search by @login above'}
+              {query.trim() ? 'Никого не найдено' : 'Нет контактов для добавления — найдите по @логину выше'}
             </p>
           ) : (
             people.map((p) => {
@@ -189,7 +189,7 @@ export default function AddMembersSheet({ open, chat, onClose, onAdded }: AddMem
             disabled={busy || selected.length < 1}
             className="w-full bg-primary text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-40"
           >
-            Add{selected.length > 0 ? ` (${selected.length})` : ''}
+            Добавить{selected.length > 0 ? ` (${selected.length})` : ''}
           </button>
         </div>
       </div>

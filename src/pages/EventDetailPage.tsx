@@ -17,6 +17,7 @@ import LocationPicker from '../components/LocationPicker'
 import PhotoGallery from '../components/PhotoGallery'
 import { formatEventDate, typeLabel } from '../lib/events'
 import { initial } from '../lib/chat'
+import { pluralLabel } from '../lib/plural'
 import type { EventItem, ParticipantStatus, User } from '../types'
 import AppHeader from '../components/AppHeader'
 
@@ -24,6 +25,12 @@ const STATUS_STYLE: Record<ParticipantStatus, string> = {
   pending: 'bg-amber-100 text-amber-600',
   accepted: 'bg-green-100 text-green-600',
   declined: 'bg-slate-200 text-slate-500',
+}
+
+const STATUS_LABEL: Record<ParticipantStatus, string> = {
+  pending: 'Ожидает',
+  accepted: 'Принял(а)',
+  declined: 'Отклонил(а)',
 }
 
 export default function EventDetailPage() {
@@ -98,8 +105,8 @@ export default function EventDetailPage() {
     return (
       <Shell onBack={() => navigate('/events')}>
         <Centered>
-          <p className="text-base font-semibold text-slate-900">Sign in to view this event</p>
-          <button onClick={promptLogin} className="text-sm text-primary font-medium mt-2">Sign in</button>
+          <p className="text-base font-semibold text-slate-900">Войдите, чтобы посмотреть эвент</p>
+          <button onClick={promptLogin} className="text-sm text-primary font-medium mt-2">Войти</button>
         </Centered>
       </Shell>
     )
@@ -114,7 +121,7 @@ export default function EventDetailPage() {
     )
   }
   if (errorStatus || !event) {
-    const msg = errorStatus === 404 ? 'Event not found' : errorStatus === 403 ? 'This event is private' : 'Could not load event'
+    const msg = errorStatus === 404 ? 'Эвент не найден' : errorStatus === 403 ? 'Это приватный эвент' : 'Не удалось загрузить эвент'
     return (
       <Shell onBack={() => navigate('/events')}>
         <Centered><p className="text-base font-semibold text-slate-900">{msg}</p></Centered>
@@ -134,10 +141,10 @@ export default function EventDetailPage() {
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-semibold text-primary uppercase tracking-wide">{typeLabel(event.type)}</span>
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-              {event.visibility === 'public' ? 'Public' : 'Private'}
+              {event.visibility === 'public' ? 'Открытый' : 'Приватный'}
             </span>
           </div>
-          <h1 className="text-xl font-bold text-slate-900">{event.title || 'Untitled'}</h1>
+          <h1 className="text-xl font-bold text-slate-900">{event.title || 'Без названия'}</h1>
           <p className="text-sm text-slate-500 mt-1">{formatEventDate(event.starts_at)}</p>
           {event.description && (
             <p className="text-sm text-slate-600 mt-3 whitespace-pre-wrap leading-relaxed">{event.description}</p>
@@ -147,7 +154,7 @@ export default function EventDetailPage() {
         {/* Photos */}
         {event.photos?.length > 0 && (
           <div className="bg-surface rounded-2xl shadow-sm p-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Photos</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Фото</p>
             <PhotoGallery photos={event.photos} />
           </div>
         )}
@@ -155,7 +162,7 @@ export default function EventDetailPage() {
         {/* Trip destination */}
         {event.type === 'trip' && dest && (
           <div className="bg-surface rounded-2xl shadow-sm p-4 space-y-2">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Destination</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Точка назначения</p>
             <LocationPicker value={{ lat: dest.lat, lon: dest.lon }} readOnly height={180} />
             {dest.address && <p className="text-sm text-slate-600">📍 {dest.address}</p>}
           </div>
@@ -165,16 +172,16 @@ export default function EventDetailPage() {
         {event.my_status === 'pending' && (
           <div className="flex gap-2">
             <button onClick={() => respond('accepted')} disabled={busy}
-              className="flex-1 bg-primary text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-40">Accept</button>
+              className="flex-1 bg-primary text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-40">Принять</button>
             <button onClick={() => respond('declined')} disabled={busy}
-              className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 font-semibold text-sm active:bg-slate-200">Decline</button>
+              className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 font-semibold text-sm active:bg-slate-200">Отклонить</button>
           </div>
         )}
 
         {/* Participants */}
         <div className="bg-surface rounded-2xl shadow-sm p-4">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-            Participants ({event.participants.length})
+            {pluralLabel(event.participants.length, 'участник', 'участника', 'участников')}
           </p>
           <div className="space-y-3">
             {event.participants.map((p) => (
@@ -191,9 +198,9 @@ export default function EventDetailPage() {
                   {p.username && <p className="text-xs text-slate-400 truncate">@{p.username}</p>}
                 </div>
                 {p.role === 'owner' ? (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">Owner</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">Владелец</span>
                 ) : (
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full ${STATUS_STYLE[p.status]}`}>{p.status}</span>
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full ${STATUS_STYLE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
                 )}
               </div>
             ))}
@@ -203,13 +210,13 @@ export default function EventDetailPage() {
         {/* Invite (any accepted participant can invite) */}
         {amAccepted && (
           <div className="bg-surface rounded-2xl shadow-sm p-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Invite people</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Пригласить</p>
             <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
               <span className="text-slate-400 text-sm">@</span>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by login or name..."
+                placeholder="Поиск по логину или имени…"
                 className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
               />
             </div>
@@ -229,7 +236,7 @@ export default function EventDetailPage() {
                       <p className="text-sm font-medium text-slate-900 truncate">{u.name || `@${u.username}`}</p>
                       {u.username && <p className="text-xs text-slate-400 truncate">@{u.username}</p>}
                     </div>
-                    <span className="text-xs text-primary font-medium">Invite</span>
+                    <span className="text-xs text-primary font-medium">Пригласить</span>
                   </button>
                 ))}
               </div>
@@ -241,19 +248,19 @@ export default function EventDetailPage() {
         {isOwner ? (
           <div className="flex gap-2">
             <button onClick={() => setShowEdit(true)}
-              className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 font-semibold text-sm active:bg-slate-200">Edit</button>
+              className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 font-semibold text-sm active:bg-slate-200">Изменить</button>
             {confirmDelete ? (
               <button onClick={handleDelete} disabled={busy}
-                className="flex-1 bg-red-500 text-white rounded-xl py-3 font-semibold text-sm active:bg-red-600 disabled:opacity-40">Confirm delete</button>
+                className="flex-1 bg-red-500 text-white rounded-xl py-3 font-semibold text-sm active:bg-red-600 disabled:opacity-40">Подтвердить удаление</button>
             ) : (
               <button onClick={() => setConfirmDelete(true)}
-                className="flex-1 bg-slate-100 text-red-500 rounded-xl py-3 font-semibold text-sm active:bg-slate-200">Delete</button>
+                className="flex-1 bg-slate-100 text-red-500 rounded-xl py-3 font-semibold text-sm active:bg-slate-200">Удалить</button>
             )}
           </div>
         ) : (
           event.my_status === 'accepted' && (
             <button onClick={leave} disabled={busy}
-              className="w-full bg-slate-100 text-red-500 rounded-xl py-3 font-semibold text-sm active:bg-slate-200 disabled:opacity-40">Leave event</button>
+              className="w-full bg-slate-100 text-red-500 rounded-xl py-3 font-semibold text-sm active:bg-slate-200 disabled:opacity-40">Покинуть эвент</button>
           )
         )}
       </div>
@@ -266,7 +273,7 @@ export default function EventDetailPage() {
 function Shell({ children, onBack }: { children: React.ReactNode; onBack: () => void }) {
   return (
     <div className="flex flex-col min-h-screen bg-slate-100">
-      <AppHeader onBack={onBack} title="Event" />
+      <AppHeader onBack={onBack} title="Эвент" />
       <div className="flex-1">{children}</div>
     </div>
   )

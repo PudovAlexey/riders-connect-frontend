@@ -67,7 +67,7 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
         photos,
       })
     } catch {
-      setError('Could not save event')
+      setError('Не удалось сохранить эвент')
       setSaving(false)
     }
   }
@@ -75,13 +75,13 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
   return (
     <BottomSheet open={open} onClose={onCancel}>
       <div className="px-4 pt-1 pb-2">
-        <p className="text-lg font-bold text-slate-900">{isEdit ? 'Edit event' : 'New event'}</p>
+        <p className="text-lg font-bold text-slate-900">{isEdit ? 'Изменить эвент' : 'Новый эвент'}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="px-4 pb-8 space-y-3">
         {/* Type */}
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Тип</label>
           <div className="flex gap-2">
             {EVENT_TYPES.map((t) => (
               <button
@@ -100,22 +100,22 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
 
         {/* Title */}
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Title *</label>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Название *</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Weekend ride"
+            placeholder="Поездка на выходные"
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Описание</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Optional details…"
+            placeholder="Подробности (необязательно)"
             rows={3}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           />
@@ -126,7 +126,7 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
 
         {/* Date & time */}
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Date & time *</label>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Дата и время *</label>
           <input
             type="datetime-local"
             value={dt}
@@ -137,7 +137,7 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
 
         {/* Visibility */}
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Visibility</label>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Видимость</label>
           <div className="flex gap-2">
             {(['public', 'private'] as EventVisibility[]).map((v) => (
               <button
@@ -148,14 +148,14 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
                   visibility === v ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'
                 }`}
               >
-                {v === 'public' ? 'Public' : 'Private'}
+                {v === 'public' ? 'Открытый' : 'Приватный'}
               </button>
             ))}
           </div>
           <p className="text-xs text-slate-400 mt-1">
             {visibility === 'public'
-              ? 'Visible to everyone in the feed.'
-              : 'Only invited participants can see it.'}
+              ? 'Виден всем в ленте.'
+              : 'Виден только приглашённым участникам.'}
           </p>
         </div>
 
@@ -163,13 +163,13 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
         {type === 'trip' && (
           <div className="space-y-2">
             <label className="block text-xs font-medium text-slate-500">
-              Destination * <span className="font-normal text-slate-400">— tap the map</span>
+              Точка назначения * <span className="font-normal text-slate-400">— нажмите на карту</span>
             </label>
             <LocationPicker value={dest} onChange={setDest} height={200} />
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Address or place name"
+              placeholder="Адрес или название места"
               className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {dest && (
@@ -188,14 +188,14 @@ export default function EventForm({ open, initial, onSubmit, onCancel }: EventFo
             disabled={!valid || saving}
             className="flex-1 bg-primary text-white rounded-xl py-3.5 font-semibold text-sm disabled:opacity-40 transition-opacity"
           >
-            {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create event'}
+            {saving ? 'Сохраняем…' : isEdit ? 'Сохранить' : 'Создать эвент'}
           </button>
           <button
             type="button"
             onClick={onCancel}
             className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3.5 font-semibold text-sm active:bg-slate-200"
           >
-            Cancel
+            Отмена
           </button>
         </div>
       </form>
